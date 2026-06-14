@@ -161,6 +161,12 @@ function handleGlobalClick(e) {
         case 'finish-paint-mode':
             window.UI.handleFinishPaintMode();
             break;
+        case 'run-free-ocr':
+            window.UI.handleRunFreeOCR();
+            break;
+        case 'copy-raw-ocr':
+            window.UI.handleCopyRawOCR();
+            break;
         case 'clear-paint':
             window.UI.handleClearPaint();
             break;

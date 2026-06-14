@@ -14,5 +14,12 @@ App mobile-first para control de reparto. PWA sin backend, usando `localStorage`
 ## Despliegue
 Cualquier servidor estático o Netlify Free. Simplemente subir la carpeta.
 
+## Lectura Gratis de Etiquetas
+RutaBoss incluye un sistema de lectura OCR integrado en el navegador usando Tesseract.js.
+- Funciona localmente, preservando la privacidad de los datos.
+- No utiliza APIs pagas de OpenAI ni de Google Vision.
+- Si la foto está muy oscura, borrosa o torcida, el reconocimiento puede fallar.
+- Siempre se presenta la opción de "Fallback Manual", para que el usuario pueda escribir/corregir cualquier campo si el OCR no logra detectarlo o lo lee mal.
+
 ## Stack 100% Free y Open-Source
 RutaBoss funciona con tecnologías gratuitas/open-source (Leaflet, Nominatim, Tesseract.js, SheetJS, LocalStorage, Netlify). Las integraciones pagas (como APIs de Google o WhatsApp Business) quedan como módulos opcionales futuros para que la app base siempre sea libre de costos de mantenimiento.

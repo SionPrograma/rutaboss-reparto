@@ -245,7 +245,7 @@ const UI = {
     handleSaveRoute() {
         const num = document.getElementById('form-ruta-num').value;
         const nom = document.getElementById('form-ruta-nombre').value;
-        const rep = document.getElementById('form-ruta-repartidor').value;
+        const rep = document.getElementById('form-ruta-repartidor').value = '';
         
         if (!num || !nom) return alert("Completa el número y nombre de la ruta.");
         if (this.freehandPoints.length < 5) {
@@ -269,6 +269,110 @@ const UI = {
             fechaCreacion: new Date().toISOString()
         });
         window.Routes.navigate('ruta-creada', { rutaId: rId });
+    },
+
+    async handleRunFreeOCR() {
+        const fileInput = document.getElementById('foto-input');
+        if (!fileInput.files || fileInput.files.length === 0) return alert('Saca una foto primero.');
+        
+        const loadingDiv = document.getElementById('ocr-loading');
+        const progressSpan = document.getElementById('ocr-progress');
+        const resultsBlock = document.getElementById('ocr-results-block');
+        const rawTextArea = document.getElementById('ocr-raw-text');
+        const errorMsg = document.getElementById('ocr-error-msg');
+        const successMsg = document.getElementById('ocr-success-msg');
+        const summaryData = document.getElementById('ocr-summary-data');
+        
+        loadingDiv.classList.remove('hidden');
+        resultsBlock.classList.add('hidden');
+        errorMsg.style.display = 'none';
+        successMsg.style.display = 'none';
+        
+        const file = fileInput.files[0];
+        
+        const result = await readLabelWithOCR(file, (progress) => {
+            progressSpan.textContent = Math.round(progress * 100) + '%';
+        });
+        
+        loadingDiv.classList.add('hidden');
+        resultsBlock.classList.remove('hidden');
+        
+        if (!result || !result.parsed) {
+            errorMsg.style.display = 'block';
+            return;
+        }
+        
+        const { text, parsed } = result;
+        rawTextArea.value = text;
+        successMsg.style.display = 'block';
+        
+        // Populate Form
+        if (parsed.cliente) {
+            const input = document.getElementById('form-paq-cliente');
+            input.value = parsed.cliente;
+            input.style.borderLeft = "4px solid var(--color-primary)";
+        }
+        if (parsed.telefono) {
+            const input = document.getElementById('form-paq-tel');
+            input.value = parsed.telefono;
+            input.style.borderLeft = "4px solid var(--color-primary)";
+        }
+        if (parsed.direccion) {
+            const input = document.getElementById('form-paq-dir');
+            input.value = parsed.direccion;
+            input.style.borderLeft = "4px solid var(--color-primary)";
+        }
+        if (parsed.pisoPuerta) {
+            const input = document.getElementById('form-paq-piso');
+            input.value = parsed.pisoPuerta;
+            input.style.borderLeft = "4px solid var(--color-primary)";
+        }
+        if (parsed.posibleCobro) {
+            document.getElementById('form-paq-cobro').checked = true;
+            document.getElementById('container-importe').classList.remove('hidden');
+            document.getElementById('form-paq-importe').value = parsed.importeCobro;
+        }
+        
+        // Show summary card details
+        const routeId = window.State.data.routeParams.rutaId;
+        const rutaObj = window.State.getRutas().find(r => r.id === routeId);
+        
+        let pqsEnRuta = window.State.getPaquetes().filter(p => p.rutaAsignada === routeId);
+        let numPaquete = pqsEnRuta.length + 1;
+        let pRutaNum = rutaObj ? rutaObj.numeroRuta : '?';
+        
+        let typeStr = "NORMAL";
+        if (document.getElementById('form-paq-horaria') && document.getElementById('form-paq-horaria').checked) typeStr = "HORARIA";
+        else if (document.getElementById('form-paq-tienda') && document.getElementById('form-paq-tienda').checked) typeStr = "TIENDA";
+        else if (parsed.posibleCobro) typeStr = "COBRO";
+        else if (document.getElementById('form-paq-bloque') && document.getElementById('form-paq-bloque').checked) typeStr = "BLOQUE";
+        
+        summaryData.innerHTML = `
+            <strong>👤 Cliente:</strong> ${parsed.cliente || '---'}<br>
+            <strong>📞 Teléfono:</strong> ${parsed.telefono || '---'}<br>
+            <strong>📍 Dirección:</strong> ${parsed.direccion || '---'} ${parsed.pisoPuerta ? '('+parsed.pisoPuerta+')' : ''}<br>
+            <strong>🏙️ CP/Ciudad:</strong> ${parsed.codigoPostal || '---'} / ${parsed.ciudad || '---'}<br>
+            <strong>💰 Cobro:</strong> ${parsed.posibleCobro ? 'Sí (€' + parsed.importeCobro + ')' : 'No'}<br>
+            <br>
+            <div style="background:var(--color-bg); padding:0.5rem; border-radius:4px; font-weight:bold; color:var(--color-primary);">
+                Se generará: ${numPaquete}/${pRutaNum} ${typeStr}
+            </div>
+        `;
+    },
+
+    handleCopyRawOCR() {
+        const text = document.getElementById('ocr-raw-text').value;
+        if (!text) return;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Texto copiado al portapapeles');
+            });
+        } else {
+            const textArea = document.getElementById('ocr-raw-text');
+            textArea.select();
+            document.execCommand('copy');
+            alert('Texto copiado al portapapeles');
+        }
     },
 
     handleExportExcel() {

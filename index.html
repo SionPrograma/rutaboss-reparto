@@ -220,7 +220,28 @@
                 <div id="preview-container" class="hidden text-center mt-2">
                     <img id="foto-preview" style="max-width:100%; max-height:200px; border-radius:8px; display:block; margin:0 auto;">
                     <p class="text-success mt-2" style="font-weight:bold;">✅ Etiqueta capturada</p>
-                    <button class="btn btn-primary w-full mt-2" data-action="continue-to-data">Continuar a datos</button>
+                    
+                    <button class="btn btn-accent btn-large w-full mt-2" data-action="run-free-ocr">🔍 Leer etiqueta gratis (OCR)</button>
+                    
+                    <div id="ocr-loading" class="hidden mt-2" style="color:var(--color-primary); font-weight:bold;">
+                        Leyendo etiqueta... <span id="ocr-progress">0%</span>
+                    </div>
+                    
+                    <div id="ocr-results-block" class="hidden mt-2 card text-left" style="background:#F8FAFC; border:1px solid #CBD5E1;">
+                        <h4 style="margin-top:0; color:var(--color-text);">Resultado escáner gratis</h4>
+                        <div id="ocr-summary-data" style="font-size:0.9rem; margin-bottom:1rem; line-height:1.4;"></div>
+                        
+                        <details style="margin-bottom:1rem;">
+                            <summary style="cursor:pointer; font-weight:bold; color:var(--color-primary);">Texto bruto leído</summary>
+                            <textarea id="ocr-raw-text" class="input-large mt-1" style="height:120px; font-family:monospace; font-size:0.8rem; margin-bottom:0.5rem;" readonly></textarea>
+                            <button class="btn btn-secondary btn-sm w-full" data-action="copy-raw-ocr">Copiar texto leído</button>
+                        </details>
+                        
+                        <p class="text-sm text-danger" id="ocr-error-msg" style="display:none;">No pude leer bien la etiqueta. Completá manualmente.</p>
+                        <p class="text-sm text-success" id="ocr-success-msg" style="display:none;">Lectura completada. Revisá los datos antes de guardar.</p>
+                    </div>
+
+                    <button class="btn btn-primary w-full mt-2" data-action="continue-to-data">Completar / Modificar datos</button>
                 </div>
             </div>
 
@@ -371,6 +392,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <!-- Tesseract.js (Local OCR) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="ocr-reader.js"></script>
     <script src="data.js"></script>
     <script src="state.js"></script>
     <script src="ui.js"></script>
