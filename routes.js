@@ -115,19 +115,18 @@ window.isPointInsideRouteSector = function(point, route) {
     return false;
 };
 
-// Mock OCR Function
-window.extractPackageDataFromLabel = function(imageFile) {
-    // Simulando retraso
-    return new Promise(resolve => {
+// Mock OCR Function (Using local Tesseract.js stub)
+window.scanLabelOCR = function(imageDataUrl) {
+    return new Promise((resolve) => {
+        // Todo: Usar Tesseract.js local para mantenerlo 100% gratis
+        // Tesseract.recognize(imageDataUrl, 'spa').then(...)
         setTimeout(() => {
             resolve({
-                cliente: '',
-                telefono: '',
-                direccion: '',
-                pisoPuerta: '',
-                idPaquete: ''
+                cliente: "Juan Pérez (Tesseract local)",
+                direccion: "Calle Larios 45",
+                telefono: "600123456"
             });
-        }, 800);
+        }, 1500);
     });
 };
 
@@ -171,6 +170,9 @@ const Routes = {
                 break;
             case 'detalle-paquete':
                 window.UI.renderDetallePaquete(params?.id);
+                break;
+            case 'reporte-jefe':
+                window.UI.renderReporteJefe();
                 break;
             case 'mapa':
                 window.UI.renderPlaceholder('Mapa');

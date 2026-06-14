@@ -79,6 +79,11 @@
                 </div>
             </div>
 
+            <div style="margin: 1rem; display: flex; gap: 0.5rem; flex-direction: column;">
+                <button class="btn btn-success btn-large w-full" data-action="export-excel">📊 Exportar a Excel (SheetJS)</button>
+                <button class="btn btn-accent btn-large w-full" data-action="open-manager-report">📱 Reporte a jefe/a</button>
+            </div>
+
             <div class="section-title flex-between" style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>Rutas / Sectores</h3>
                 <button class="btn btn-primary btn-sm action-crear-ruta" data-action="open-create-route">+ Crear Ruta</button>
@@ -281,6 +286,7 @@
                 <div class="header-left"><button class="btn-icon btn-volver" data-action="logout">🔙</button><h2 id="ruta-title">Mi Ruta</h2></div>
                 <button class="btn-icon btn-salir" data-action="logout" title="Cerrar sesión">🚪</button>
             </header>
+            
             <div class="section-title"><h3>Pendientes (<span id="count-pendientes">0</span>)</h3></div>
             <div id="mis-paquetes-list"></div>
         </div>
@@ -333,8 +339,38 @@
         <div class="view placeholder-view"><header class="app-header"><div class="header-left"><button class="btn-icon btn-volver" data-action="go-back">🔙</button><h2 class="view-title"></h2></div></header><div class="empty-state"><div class="icon">🚧</div><p>Módulo en construcción</p></div></div>
     </template>
 
+    <!-- Reporte a Jefe -->
+    <template id="tpl-reporte-jefe">
+        <div class="view report-view">
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="btn-icon btn-volver" data-action="go-home">🔙</button>
+                    <h2>Reporte General</h2>
+                </div>
+            </header>
+            
+            <div class="card mt-2">
+                <label>Teléfono Jefe/a</label>
+                <input type="tel" id="form-jefe-phone" class="input-large" placeholder="Ej: 600123456">
+                
+                <label>Vista previa del mensaje</label>
+                <textarea id="report-preview" class="input-large" style="height: 350px; font-family: monospace; font-size: 0.85rem;" readonly></textarea>
+                
+                <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                    <button class="btn btn-secondary btn-large w-full" data-action="copy-manager-report">📋 Copiar Mensaje</button>
+                    <button class="btn btn-success btn-large w-full" data-action="send-manager-report">💬 Enviar por WhatsApp</button>
+                    <button class="btn btn-danger btn-large w-full" data-action="go-home" style="background:transparent; color:var(--color-danger); border:1px solid var(--color-danger);">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- SheetJS (Excel) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <!-- Tesseract.js (Local OCR) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="data.js"></script>
     <script src="state.js"></script>
     <script src="ui.js"></script>

@@ -164,5 +164,17 @@ function handleGlobalClick(e) {
         case 'clear-paint':
             window.UI.handleClearPaint();
             break;
+        case 'export-excel':
+            window.UI.handleExportExcel();
+            break;
+        case 'open-manager-report':
+            window.Routes.navigate('reporte-jefe');
+            break;
+        case 'copy-manager-report':
+            window.UI.handleCopyManagerReport();
+            break;
+        case 'send-manager-report':
+            window.UI.handleSendManagerReport();
+            break;
     }
 }

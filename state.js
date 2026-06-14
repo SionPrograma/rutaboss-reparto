@@ -4,9 +4,11 @@ const State = {
         currentUser: null,
         currentRoute: 'login',
         routeParams: null,
-        rutas: null,
-        paquetes: null,
-        globalScanCounter: 0
+        rutas: [],
+        paquetes: [],
+        globalScanCounter: 0,
+        managerReportPhone: '',
+        managerReportHistory: []
     },
 
     init() {

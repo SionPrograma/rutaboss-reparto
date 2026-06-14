@@ -271,6 +271,141 @@ const UI = {
         window.Routes.navigate('ruta-creada', { rutaId: rId });
     },
 
+    handleExportExcel() {
+        if (typeof XLSX === 'undefined') return alert('Cargando librería Excel, por favor intenta de nuevo en unos segundos.');
+        const pqs = window.State.getPaquetes();
+        const routes = window.State.getRutas();
+        
+        const data = pqs.map(p => {
+            const r = routes.find(rut => rut.id === p.rutaAsignada);
+            return {
+                "Código Físico": p.codigoFisico,
+                "Cliente": p.cliente,
+                "Teléfono": p.telefono,
+                "Dirección": p.direccion,
+                "Ruta": r ? r.nombre : 'Sin Ruta',
+                "Estado": p.estado,
+                "Horaria": p.esHoraria ? "Sí" : "No",
+                "Tienda": p.esTienda ? "Sí" : "No",
+                "Cobro": p.esCobro ? "Sí" : "No"
+            };
+        });
+        
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Paquetes_RutaBoss");
+        XLSX.writeFile(workbook, "RutaBoss_Reporte.xlsx");
+    },
+
+    renderReporteJefe() {
+        this.navContainer.classList.add('hidden');
+        const tpl = document.getElementById('tpl-reporte-jefe').content.cloneNode(true);
+        
+        const phoneInput = tpl.querySelector('#form-jefe-phone');
+        phoneInput.value = window.State.data.managerReportPhone || '';
+        
+        const preview = tpl.querySelector('#report-preview');
+        preview.value = this.generateManagerReport();
+        
+        this.clearApp();
+        this.appContainer.appendChild(tpl);
+    },
+
+    generateManagerReport() {
+        const pqs = window.State.getPaquetes();
+        const routes = window.State.getRutas();
+        const reps = window.appData.repartidores;
+        
+        const pad0 = (n) => n.toString().padStart(2, '0');
+        const d = new Date();
+        const timeStr = `${pad0(d.getHours())}:${pad0(d.getMinutes())}`;
+        
+        const entregados = pqs.filter(p => p.estado === 'entregado').length;
+        const pendientes = pqs.filter(p => p.estado === 'pendiente').length;
+        const incidencias = pqs.filter(p => p.estado === 'fallido' && (!p.incidencia || p.incidencia.motivo !== 'Reintentar')).length;
+        const reintentos = pqs.filter(p => p.estado === 'fallido' && p.incidencia && p.incidencia.motivo === 'Reintentar').length;
+        
+        const cobrosP = pqs.filter(p => p.esCobro && p.estado === 'pendiente').length;
+        const tiendasP = pqs.filter(p => p.esTienda && p.estado === 'pendiente').length;
+        const horariasP = pqs.filter(p => p.esHoraria && p.estado === 'pendiente').length;
+        const sinAsignar = pqs.filter(p => !p.rutaAsignada).length;
+
+        let str = `📦 Reporte general de ruta — ${timeStr}\n\n`;
+        str += `Total paquetes: ${pqs.length}\n`;
+        str += `Entregados: ${entregados}\n`;
+        str += `Pendientes: ${pendientes}\n`;
+        str += `Incidencias: ${incidencias}\n`;
+        str += `Reintentos: ${reintentos}\n`;
+        str += `Cobros pendientes: ${cobrosP}\n`;
+        str += `Tiendas pendientes: ${tiendasP}\n`;
+        str += `Horarias pendientes: ${horariasP}\n`;
+        str += `Sin asignar: ${sinAsignar}\n\n`;
+        
+        str += `🗺️ Por ruta:\n`;
+        routes.forEach(r => {
+            const rp = pqs.filter(p => p.rutaAsignada === r.id);
+            const rent = rp.filter(p => p.estado === 'entregado').length;
+            const rpend = rp.filter(p => p.estado === 'pendiente').length;
+            const rinc = rp.filter(p => p.estado === 'fallido').length;
+            str += `- ${r.nombre || ('Ruta ' + r.numeroRuta)}: ${rent} entregados / ${rpend} pendientes / ${rinc} incidencias\n`;
+        });
+        
+        str += `\n👥 Por repartidor:\n`;
+        reps.forEach(rep => {
+            const rRep = routes.filter(r => r.repartidorAsignado === rep.id).map(r => r.id);
+            const rp = pqs.filter(p => rRep.includes(p.rutaAsignada));
+            if (rp.length > 0) {
+                const rent = rp.filter(p => p.estado === 'entregado').length;
+                const rpend = rp.filter(p => p.estado === 'pendiente').length;
+                const rinc = rp.filter(p => p.estado === 'fallido').length;
+                str += `- ${rep.nombre}: ${rent} entregados / ${rpend} pendientes / ${rinc} incidencias\n`;
+            }
+        });
+        
+        str += `\n⚠️ Alertas:\n`;
+        str += `- Cobros pendientes: ${cobrosP}\n`;
+        str += `- Tiendas pendientes: ${tiendasP}\n`;
+        str += `- Prioridad horaria pendiente: ${horariasP}\n\n`;
+        
+        str += `Última actualización: ${timeStr}`;
+        return str;
+    },
+
+    handleCopyManagerReport() {
+        const text = document.getElementById('report-preview').value;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('¡Reporte copiado al portapapeles!');
+            }).catch(() => alert('No se pudo copiar el texto.'));
+        } else {
+            // Fallback for older browsers
+            const textArea = document.getElementById('report-preview');
+            textArea.select();
+            document.execCommand('copy');
+            alert('¡Reporte copiado al portapapeles!');
+        }
+    },
+
+    handleSendManagerReport() {
+        const phone = document.getElementById('form-jefe-phone').value.trim();
+        if (!phone) return alert('Por favor, ingresa el teléfono del jefe/a.');
+        
+        window.State.data.managerReportPhone = phone;
+        const text = document.getElementById('report-preview').value;
+        
+        if (!window.State.data.managerReportHistory) window.State.data.managerReportHistory = [];
+        window.State.data.managerReportHistory.push({
+            id: 'rep-' + Date.now(),
+            createdAt: new Date().toISOString(),
+            message: text
+        });
+        window.State.save();
+        
+        const cleanPhone = phone.replace(/\D/g, '');
+        const encodedText = encodeURIComponent(text);
+        window.open(`https://wa.me/${cleanPhone}?text=${encodedText}`, '_blank');
+    },
+
     // Render Ruta Creada
     renderRutaCreada(rutaId) {
         this.navContainer.classList.add('hidden');

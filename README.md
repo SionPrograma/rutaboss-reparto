@@ -12,4 +12,7 @@ App mobile-first para control de reparto. PWA sin backend, usando `localStorage`
 - Enrutamiento básico e inicialización PWA (manifest y service-worker).
 
 ## Despliegue
-Cualquier servidor estático o Netlify. Simplemente subir la carpeta.
+Cualquier servidor estático o Netlify Free. Simplemente subir la carpeta.
+
+## Stack 100% Free y Open-Source
+RutaBoss funciona con tecnologías gratuitas/open-source (Leaflet, Nominatim, Tesseract.js, SheetJS, LocalStorage, Netlify). Las integraciones pagas (como APIs de Google o WhatsApp Business) quedan como módulos opcionales futuros para que la app base siempre sea libre de costos de mantenimiento.
