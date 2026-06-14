@@ -41,14 +41,19 @@
             </div>
             <div class="card">
                 <h2 style="margin-bottom: 1rem; font-size: 1.25rem;">Seleccionar Perfil</h2>
-                <button class="btn btn-primary btn-large role-btn" data-action="select-role" data-role="repartidor">Repartidor</button>
-                <button class="btn btn-secondary btn-large role-btn" data-action="select-role" data-role="encargado">Encargado</button>
+                <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                    <button class="btn btn-secondary btn-large role-btn" data-action="select-role" data-role="repartidor" style="flex:1;">Repartidor</button>
+                    <button class="btn btn-secondary btn-large role-btn" data-action="select-role" data-role="encargado" style="flex:1;">Encargado</button>
+                </div>
                 
-                <div id="encargado-login" class="hidden mt-4">
+                <div id="encargado-login" class="hidden mt-4 mb-4">
                     <label for="password">Contraseña de acceso</label>
                     <input type="password" id="password" class="input-large" placeholder="1234">
-                    <button class="btn btn-primary btn-large w-full" data-action="login-encargado">Entrar</button>
                 </div>
+
+                <div id="login-error" class="hidden text-danger mb-2 text-center" style="font-weight:bold; color: var(--color-danger);">Contraseña incorrecta</div>
+                
+                <button class="btn btn-primary btn-large w-full" data-action="login-submit">Entrar</button>
             </div>
         </div>
     </template>

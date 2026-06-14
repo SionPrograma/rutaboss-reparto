@@ -1,21 +1,41 @@
 // app.js - Entrada de la aplicación
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar estado
-    window.State.init();
+window.__rutabossInitialized = false;
+window.__rutabossEventsBound = false;
 
-    // Renderizar vista inicial
+function initApp() {
+    if (window.__rutabossInitialized) return;
+    window.__rutabossInitialized = true;
+
+    window.State.init();
     window.Routes.renderCurrent();
 
-    // Delegación de Eventos Global (Navegación y Botones)
-    document.addEventListener('click', handleGlobalClick);
+    if (!window.__rutabossEventsBound) {
+        document.addEventListener('click', handleGlobalClick);
+        window.__rutabossEventsBound = true;
+    }
 
-    // Service Worker Registration
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('service-worker.js')
+            .then(reg => {
+                reg.onupdatefound = () => {
+                    const installingWorker = reg.installing;
+                    installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('New update available. Refreshing...');
+                            window.location.reload();
+                        }
+                    };
+                };
+            })
             .catch(err => console.error('Error registrando Service Worker', err));
     }
-});
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+window.addEventListener('load', initApp);
+
+let currentSelectedRole = null;
 
 function handleGlobalClick(e) {
     const btn = e.target.closest('[data-action]');
@@ -32,18 +52,43 @@ function handleGlobalClick(e) {
             break;
         case 'logout':
             window.State.logout();
+            window.Routes.renderCurrent();
             break;
         case 'select-role':
-            if (btn.dataset.role === 'encargado') {
+            currentSelectedRole = btn.dataset.role;
+            // Feedback visual
+            document.querySelectorAll('.role-btn').forEach(b => {
+                b.classList.remove('btn-primary');
+                b.classList.add('btn-secondary');
+            });
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
+
+            if (currentSelectedRole === 'encargado') {
                 document.getElementById('encargado-login').classList.remove('hidden');
             } else {
-                window.State.login('repartidor');
+                document.getElementById('encargado-login').classList.add('hidden');
             }
+            document.getElementById('login-error').classList.add('hidden');
             break;
-        case 'login-encargado':
-            const pass = document.getElementById('password').value;
-            if (pass === '1234') window.State.login('encargado');
-            else alert('Contraseña incorrecta');
+        case 'login-submit':
+            if (!currentSelectedRole) {
+                alert('Por favor, selecciona un perfil (Repartidor o Encargado)');
+                return;
+            }
+            if (currentSelectedRole === 'encargado') {
+                const pass = document.getElementById('password').value;
+                if (pass === '1234') {
+                    document.getElementById('login-error').classList.add('hidden');
+                    window.State.login('encargado');
+                    window.Routes.renderCurrent();
+                } else {
+                    document.getElementById('login-error').classList.remove('hidden');
+                }
+            } else if (currentSelectedRole === 'repartidor') {
+                window.State.login('repartidor');
+                window.Routes.renderCurrent();
+            }
             break;
         case 'open-create-route':
             window.Routes.navigate('crear-ruta');
@@ -78,6 +123,7 @@ function handleGlobalClick(e) {
             break;
         case 'select-driver':
             window.State.login('repartidor', btn.dataset.driverId);
+            window.Routes.renderCurrent();
             break;
         case 'open-package-detail':
             window.Routes.navigate('detalle-paquete', { id: btn.dataset.pkgId });
