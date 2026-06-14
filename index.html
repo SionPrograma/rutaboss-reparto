@@ -56,26 +56,7 @@
         </div>
     </template>
 
-    <!-- Selector Repartidor -->
-    <template id="tpl-selector-repartidor">
-        <div class="view selector-view">
-            <header class="app-header">
-                <div class="header-left">
-                    <button class="btn-icon btn-volver">🔙</button>
-                    <h2>¿Quién eres?</h2>
-                </div>
-                <button class="btn-icon btn-salir" title="Salir">🚪</button>
-            </header>
-            <div class="card">
-                <p class="mb-2">Selecciona tu perfil para ver tu ruta:</p>
-                <div id="repartidores-lista-botones" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <!-- Injected via JS -->
-                </div>
-            </div>
-        </div>
-    </template>
-
-    <!-- Dashboard Encargado -->
+    <!-- Dashboard Encargado (Rutas) -->
     <template id="tpl-dashboard-encargado">
         <div class="view dashboard-view">
             <header class="app-header">
@@ -88,31 +69,145 @@
             <div class="dashboard-stats">
                 <div class="stat-card horaria">
                     <span class="stat-value" id="stat-horaria">0</span>
-                    <span class="stat-label">Horaria</span>
+                    <span class="stat-label">Horarias Totales</span>
                 </div>
                 <div class="stat-card tienda">
                     <span class="stat-value" id="stat-tienda">0</span>
-                    <span class="stat-label">Tiendas</span>
-                </div>
-                <div class="stat-card bloques">
-                    <span class="stat-value" id="stat-bloque">0</span>
-                    <span class="stat-label">Bloques</span>
-                </div>
-                <div class="stat-card cobro">
-                    <span class="stat-value" id="stat-cobro">0</span>
-                    <span class="stat-label">Cobros</span>
+                    <span class="stat-label">Tiendas Totales</span>
                 </div>
             </div>
 
-            <div class="section-title">
-                <h3>Repartidores Activos</h3>
+            <div class="section-title flex-between" style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Rutas / Sectores</h3>
+                <button class="btn btn-primary btn-sm action-crear-ruta">+ Crear Ruta</button>
             </div>
-            <div id="repartidores-list" class="horizontal-list"></div>
-
-            <div class="section-title">
-                <h3>Resumen Paquetes</h3>
+            
+            <div id="rutas-list" style="display:flex; flex-direction:column; gap:1rem;"></div>
+            
+            <div class="section-title mt-4">
+                <h3>Últimos Paquetes</h3>
             </div>
             <div id="paquetes-list"></div>
+        </div>
+    </template>
+    
+    <!-- Plantilla Ruta Card -->
+    <template id="tpl-ruta-card">
+        <div class="card ruta-card" style="border-left: 5px solid var(--color-primary);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 0.5rem;">
+                <h3 class="ruta-nombre" style="margin:0; font-size: 1.3rem;">Ruta</h3>
+                <span class="badge badge-asignado ruta-repartidor"></span>
+            </div>
+            <div class="ruta-stats" style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-bottom: 1rem; color: var(--color-text-light); font-size:0.9rem;">
+                <div>📦 <span class="ruta-totales">0</span> paquetes</div>
+                <div>🏪 <span class="ruta-tiendas">0</span> tiendas</div>
+                <div>⏱️ <span class="ruta-horarias">0</span> horarias</div>
+                <div>🏢 <span class="ruta-bloques">0</span> bloques</div>
+                <div>💶 <span class="ruta-cobros">0</span> cobros</div>
+            </div>
+            <button class="btn btn-accent btn-large w-full action-cargar-paquete">+ Cargar Paquete</button>
+        </div>
+    </template>
+
+    <!-- Crear Ruta -->
+    <template id="tpl-crear-ruta">
+        <div class="view crear-ruta-view">
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="btn-icon btn-volver">🔙</button>
+                    <h2>Crear Ruta</h2>
+                </div>
+            </header>
+            <div class="card">
+                <label>Número de Ruta</label>
+                <input type="number" id="form-ruta-num" class="input-large" placeholder="Ej: 5">
+                
+                <label>Nombre/Sector</label>
+                <input type="text" id="form-ruta-nombre" class="input-large" placeholder="Ej: Ruta 5 (Centro)">
+                
+                <label>Repartidor Asignado (opcional)</label>
+                <select id="form-ruta-repartidor" class="input-large">
+                    <option value="">Sin asignar</option>
+                </select>
+                
+                <button class="btn btn-primary btn-large w-full mt-4 action-guardar-ruta">Guardar Ruta</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Crear Paquete -->
+    <template id="tpl-crear-paquete">
+        <div class="view crear-paquete-view">
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="btn-icon btn-volver">🔙</button>
+                    <h2>Cargar Paquete</h2>
+                </div>
+            </header>
+            <div class="card">
+                <h3 id="form-paq-ruta-nombre" class="mb-2" style="color:var(--color-primary-light);">En Ruta</h3>
+                
+                <label>Cliente</label>
+                <input type="text" id="form-paq-cliente" class="input-large" placeholder="Nombre completo">
+                
+                <label>Teléfono</label>
+                <input type="tel" id="form-paq-tel" class="input-large" placeholder="600000000">
+                
+                <label>Dirección</label>
+                <input type="text" id="form-paq-dir" class="input-large" placeholder="Calle, número...">
+                
+                <label>Piso/Puerta</label>
+                <input type="text" id="form-paq-piso" class="input-large" placeholder="1A, Local...">
+                
+                <div style="display:flex; gap:1rem; flex-wrap:wrap; margin: 1rem 0;">
+                    <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="form-paq-horaria"> Es Horaria</label>
+                    <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="form-paq-tienda"> Es Tienda</label>
+                    <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="form-paq-bloque"> Es Bloque</label>
+                    <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="form-paq-cobro"> Tiene Cobro</label>
+                </div>
+                
+                <div id="container-importe" class="hidden">
+                    <label>Importe a cobrar (€)</label>
+                    <input type="number" id="form-paq-importe" class="input-large" value="0">
+                </div>
+                
+                <button class="btn btn-success btn-large w-full mt-4 action-guardar-paquete">Generar Código</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Pantalla Escribir Código -->
+    <template id="tpl-escribir-codigo">
+        <div class="view escribir-codigo-view text-center">
+            <header class="app-header">
+                <div class="header-left">
+                    <h2>Escribir en Paquete</h2>
+                </div>
+            </header>
+            <div class="card" style="margin-top: 3rem; padding: 3rem 1rem;">
+                <p class="mb-2 text-light">Copia esto en grande en el paquete:</p>
+                <div id="display-codigo-fisico" style="font-size: 3.5rem; font-weight: 900; line-height: 1.1; margin-bottom: 2rem; color: var(--color-primary);">
+                    45/2 TIENDA
+                </div>
+                <button class="btn btn-primary btn-large w-full action-marcar-escrito">✅ Marcar código escrito</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Selector Repartidor -->
+    <template id="tpl-selector-repartidor">
+        <div class="view selector-view">
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="btn-icon btn-volver">🔙</button>
+                    <h2>¿Quién eres?</h2>
+                </div>
+                <button class="btn-icon btn-salir" title="Salir">🚪</button>
+            </header>
+            <div class="card">
+                <p class="mb-2">Selecciona tu perfil para ver tu ruta:</p>
+                <div id="repartidores-lista-botones" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+            </div>
         </div>
     </template>
 
@@ -131,7 +226,7 @@
                 <span>📍 Mapa Simulado</span>
             </div>
 
-            <div class="section-title" style="display: flex; justify-content: space-between;">
+            <div class="section-title">
                 <h3>Pendientes (<span id="count-pendientes">0</span>)</h3>
             </div>
             
@@ -142,18 +237,18 @@
     <!-- Componente Tarjeta Paquete (Lista) -->
     <template id="tpl-paquete-card">
         <div class="card paquete-card">
-            <div class="paquete-header">
-                <span class="paquete-id"></span>
+            <div class="paquete-header" style="margin-bottom:0.75rem;">
+                <span class="paquete-fisico" style="font-size:1.4rem; font-weight:900; color:var(--color-primary);"></span>
                 <span class="paquete-asignado badge hidden"></span>
             </div>
-            <div class="paquete-cliente"></div>
+            <div class="paquete-cliente" style="font-size: 1.1rem; font-weight:bold; margin-bottom:0.25rem;"></div>
             <div class="paquete-body">
                 <p><strong>📞</strong> <span class="paquete-tel"></span></p>
                 <p><strong>📍</strong> <span class="paquete-dir"></span></p>
-                <div class="paquete-etiquetas"></div>
+                <p class="paquete-ruta-info" style="font-size:0.85rem; color:var(--color-text-light); margin-top:0.2rem;"><strong>Ruta:</strong> <span></span></p>
             </div>
-            <div class="paquete-actions">
-                <button class="btn btn-primary btn-sm action-ver">Ver Detalle ➔</button>
+            <div class="paquete-actions" style="margin-top:0.5rem;">
+                <button class="btn btn-secondary btn-sm action-ver" style="width:100%;">Ver Detalle ➔</button>
             </div>
         </div>
     </template>
@@ -168,15 +263,17 @@
                 </div>
             </header>
             
-            <div class="card">
+            <div class="card text-center" style="background:var(--color-bg); border:none; padding:1rem;">
+                <div class="det-fisico" style="font-size: 2.5rem; font-weight: 900; color: var(--color-primary); line-height:1;"></div>
+            </div>
+
+            <div class="card mt-2">
                 <div class="cliente-info"><strong>👤</strong> <span class="det-cliente"></span></div>
                 <div style="font-size: 1.1rem; color: var(--color-primary); margin-bottom: 0.5rem;">
                     <strong>📞</strong> <span class="det-tel"></span>
                 </div>
                 
                 <div class="big-address det-dir"></div>
-                
-                <div class="det-etiquetas paquete-etiquetas mb-2"></div>
                 
                 <div class="pago-info det-pago"></div>
                 

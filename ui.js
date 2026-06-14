@@ -4,43 +4,36 @@ const UI = {
     appContainer: document.getElementById('app'),
     navContainer: document.getElementById('bottom-nav'),
 
-    // Helpers
     clearApp() { this.appContainer.innerHTML = ''; },
     cloneTpl(id) { return document.getElementById(id).content.cloneNode(true); },
     setupBackBtn(el) {
         const btn = el.querySelector('.btn-volver');
-        if (btn) btn.addEventListener('click', () => window.history.back() || window.Routes.navigate('inicio'));
+        if (btn) btn.addEventListener('click', () => window.history.back());
     },
     setupExitBtn(el) {
         const btn = el.querySelector('.btn-salir');
-        if (btn) btn.addEventListener('click', () => { window.State.logout(); window.Routes.navigate('login'); });
+        if (btn) btn.addEventListener('click', () => { window.State.logout(); });
     },
 
-    // Views
+    // Login & Selectors
     renderLogin() {
         this.navContainer.classList.add('hidden');
         const tpl = this.cloneTpl('tpl-login');
         
         tpl.querySelectorAll('.role-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const role = e.target.dataset.role;
-                if (role === 'encargado') {
+                if (e.target.dataset.role === 'encargado') {
                     document.getElementById('encargado-login').classList.remove('hidden');
                 } else {
                     window.State.login('repartidor');
-                    window.Routes.navigate('inicio');
                 }
             });
         });
 
         const passInput = tpl.querySelector('#password');
         tpl.querySelector('#btn-login-encargado').addEventListener('click', () => {
-            if (passInput.value === '1234') {
-                window.State.login('encargado');
-                window.Routes.navigate('inicio');
-            } else {
-                alert('Contraseña incorrecta');
-            }
+            if (passInput.value === '1234') window.State.login('encargado');
+            else alert('Contraseña incorrecta');
         });
 
         this.clearApp();
@@ -50,8 +43,9 @@ const UI = {
     renderSelectorRepartidor() {
         this.navContainer.classList.add('hidden');
         const tpl = this.cloneTpl('tpl-selector-repartidor');
-        this.setupBackBtn(tpl);
         this.setupExitBtn(tpl);
+        const btnVolver = tpl.querySelector('.btn-volver');
+        if (btnVolver) btnVolver.addEventListener('click', () => window.State.logout());
 
         const list = tpl.querySelector('#repartidores-lista-botones');
         window.appData.repartidores.forEach(rep => {
@@ -60,7 +54,6 @@ const UI = {
             btn.textContent = rep.nombre;
             btn.addEventListener('click', () => {
                 window.State.login('repartidor', rep.id);
-                window.Routes.navigate('inicio');
             });
             list.appendChild(btn);
         });
@@ -69,31 +62,55 @@ const UI = {
         this.appContainer.appendChild(tpl);
     },
 
+    // Encargado: Dashboard & Rutas
     renderDashboardEncargado() {
         this.navContainer.classList.remove('hidden');
         const tpl = this.cloneTpl('tpl-dashboard-encargado');
         this.setupExitBtn(tpl);
 
         const paquetes = window.State.getPaquetes();
+        const rutas = window.State.getRutas();
         
         // Stats
-        tpl.querySelector('#stat-horaria').textContent = paquetes.filter(p => p.etiquetas.includes('Horaria')).length;
-        tpl.querySelector('#stat-tienda').textContent = paquetes.filter(p => p.etiquetas.includes('Tienda')).length;
-        tpl.querySelector('#stat-bloque').textContent = paquetes.filter(p => p.etiquetas.includes('Bloque')).length;
-        tpl.querySelector('#stat-cobro').textContent = paquetes.filter(p => p.etiquetas.includes('Cobro')).length;
+        tpl.querySelector('#stat-horaria').textContent = paquetes.filter(p => p.esHoraria).length;
+        tpl.querySelector('#stat-tienda').textContent = paquetes.filter(p => p.esTienda).length;
 
-        // Repartidores
-        const repList = tpl.querySelector('#repartidores-list');
-        window.appData.repartidores.forEach(rep => {
-            const el = document.createElement('div');
-            el.className = 'repartidor-chip';
-            el.textContent = rep.nombre;
-            repList.appendChild(el);
+        // Rutas List
+        const rutasList = tpl.querySelector('#rutas-list');
+        rutas.forEach(ruta => {
+            const rTpl = this.cloneTpl('tpl-ruta-card');
+            const card = rTpl.querySelector('.ruta-card');
+            card.style.borderLeftColor = ruta.color || 'var(--color-primary)';
+            rTpl.querySelector('.ruta-nombre').textContent = `${ruta.nombre} (R${ruta.numeroRuta})`;
+            
+            const pqs = paquetes.filter(p => p.rutaAsignada === ruta.id);
+            rTpl.querySelector('.ruta-totales').textContent = pqs.length;
+            rTpl.querySelector('.ruta-tiendas').textContent = pqs.filter(p=>p.esTienda).length;
+            rTpl.querySelector('.ruta-horarias').textContent = pqs.filter(p=>p.esHoraria).length;
+            rTpl.querySelector('.ruta-bloques').textContent = pqs.filter(p=>p.esBloque).length;
+            rTpl.querySelector('.ruta-cobros').textContent = pqs.filter(p=>p.esCobro).length;
+
+            if (ruta.repartidorAsignado) {
+                const rep = window.appData.repartidores.find(r => r.id === ruta.repartidorAsignado);
+                if (rep) rTpl.querySelector('.ruta-repartidor').textContent = rep.nombre;
+            } else {
+                rTpl.querySelector('.ruta-repartidor').style.display = 'none';
+            }
+
+            rTpl.querySelector('.action-cargar-paquete').addEventListener('click', () => {
+                window.Routes.navigate('crear-paquete', { rutaId: ruta.id });
+            });
+
+            rutasList.appendChild(rTpl);
         });
 
-        // Paquetes (List all)
+        tpl.querySelector('.action-crear-ruta').addEventListener('click', () => {
+            window.Routes.navigate('crear-ruta');
+        });
+
+        // Últimos Paquetes
         const paqList = tpl.querySelector('#paquetes-list');
-        paquetes.forEach(pkg => {
+        paquetes.slice(-5).reverse().forEach(pkg => {
             paqList.appendChild(this.createPaqueteCard(pkg, true));
         });
 
@@ -101,6 +118,90 @@ const UI = {
         this.appContainer.appendChild(tpl);
     },
 
+    renderCrearRuta() {
+        this.navContainer.classList.add('hidden');
+        const tpl = this.cloneTpl('tpl-crear-ruta');
+        this.setupBackBtn(tpl);
+
+        const selectRep = tpl.querySelector('#form-ruta-repartidor');
+        window.appData.repartidores.forEach(r => {
+            selectRep.add(new Option(r.nombre, r.id));
+        });
+
+        tpl.querySelector('.action-guardar-ruta').addEventListener('click', () => {
+            const num = tpl.querySelector('#form-ruta-num').value;
+            const nom = tpl.querySelector('#form-ruta-nombre').value;
+            const rep = selectRep.value;
+            
+            if (!num || !nom) return alert("Completa número y nombre");
+            
+            window.State.addRuta({
+                id: 'ruta-' + Date.now(),
+                numeroRuta: parseInt(num),
+                nombre: nom,
+                color: '#1E3A8A', // generic color
+                repartidorAsignado: rep || null
+            });
+            window.history.back();
+        });
+
+        this.clearApp();
+        this.appContainer.appendChild(tpl);
+    },
+
+    renderCrearPaquete(rutaId) {
+        this.navContainer.classList.add('hidden');
+        const ruta = window.State.getRutas().find(r => r.id === rutaId);
+        if (!ruta) return window.history.back();
+
+        const tpl = this.cloneTpl('tpl-crear-paquete');
+        this.setupBackBtn(tpl);
+        tpl.querySelector('#form-paq-ruta-nombre').textContent = `En: ${ruta.nombre}`;
+
+        const chkCobro = tpl.querySelector('#form-paq-cobro');
+        const contImporte = tpl.querySelector('#container-importe');
+        chkCobro.addEventListener('change', () => {
+            contImporte.classList.toggle('hidden', !chkCobro.checked);
+        });
+
+        tpl.querySelector('.action-guardar-paquete').addEventListener('click', () => {
+            const p = window.State.addPaquete({
+                rutaAsignada: ruta.id,
+                cliente: tpl.querySelector('#form-paq-cliente').value || 'Sin nombre',
+                telefono: tpl.querySelector('#form-paq-tel').value || '',
+                direccion: tpl.querySelector('#form-paq-dir').value || '',
+                pisoPuerta: tpl.querySelector('#form-paq-piso').value || '',
+                esHoraria: tpl.querySelector('#form-paq-horaria').checked,
+                esTienda: tpl.querySelector('#form-paq-tienda').checked,
+                esBloque: tpl.querySelector('#form-paq-bloque').checked,
+                esCobro: chkCobro.checked,
+                importeCobro: parseFloat(tpl.querySelector('#form-paq-importe').value) || 0,
+            });
+            window.Routes.navigate('escribir-codigo', { paqueteId: p.idPaquete });
+        });
+
+        this.clearApp();
+        this.appContainer.appendChild(tpl);
+    },
+
+    renderEscribirCodigo(paqueteId) {
+        this.navContainer.classList.add('hidden');
+        const pkg = window.State.getPaquetes().find(p => p.idPaquete === paqueteId);
+        if (!pkg) return window.history.back();
+
+        const tpl = this.cloneTpl('tpl-escribir-codigo');
+        tpl.querySelector('#display-codigo-fisico').textContent = pkg.codigoFisico;
+        
+        tpl.querySelector('.action-marcar-escrito').addEventListener('click', () => {
+            window.State.updatePaquete(paqueteId, { codigoEscrito: true });
+            window.Routes.navigate('inicio');
+        });
+
+        this.clearApp();
+        this.appContainer.appendChild(tpl);
+    },
+
+    // Repartidor
     renderPanelRepartidor(repartidorId) {
         this.navContainer.classList.remove('hidden');
         const tpl = this.cloneTpl('tpl-panel-repartidor');
@@ -110,71 +211,58 @@ const UI = {
         const rep = window.appData.repartidores.find(r => r.id === repartidorId);
         if (rep) tpl.querySelector('#ruta-title').textContent = `Ruta de ${rep.nombre}`;
 
-        const paquetes = window.State.getPaquetes().filter(p => p.asignadoId === repartidorId);
+        const rutasDelRepartidor = window.State.getRutas().filter(r => r.repartidorAsignado === repartidorId).map(r=>r.id);
+        
+        // Paquetes asignados directamente (legacy) o por estar en su ruta
+        let paquetes = window.State.getPaquetes().filter(p => 
+            p.asignadoId === repartidorId || rutasDelRepartidor.includes(p.rutaAsignada)
+        );
+
         tpl.querySelector('#count-pendientes').textContent = paquetes.filter(p => p.estado === 'pendiente').length;
 
         const list = tpl.querySelector('#mis-paquetes-list');
-        // Sort: Horaria > Tienda > Bloque > Cobro
         const priorityScore = (p) => {
-            if (p.estado !== 'pendiente') return 100; // Move done to bottom
-            if (p.etiquetas.includes('Horaria')) return 1;
-            if (p.etiquetas.includes('Tienda')) return 2;
-            if (p.etiquetas.includes('Bloque')) return 3;
-            if (p.etiquetas.includes('Cobro')) return 4;
+            if (p.estado !== 'pendiente') return 100;
+            if (p.esHoraria) return 1;
+            if (p.esTienda) return 2;
+            if (p.esBloque) return 3;
+            if (p.esCobro) return 4;
             return 5;
         };
         
         const sorted = [...paquetes].sort((a,b) => priorityScore(a) - priorityScore(b));
-
-        sorted.forEach((pkg, index) => {
-            list.appendChild(this.createPaqueteCard(pkg, false, index + 1));
-        });
+        sorted.forEach((pkg) => list.appendChild(this.createPaqueteCard(pkg, false)));
 
         this.clearApp();
         this.appContainer.appendChild(tpl);
     },
 
-    createPaqueteCard(pkg, showAsignado = false, orderNum = null) {
+    createPaqueteCard(pkg, isEncargado = false) {
         const tpl = this.cloneTpl('tpl-paquete-card');
         const card = tpl.querySelector('.paquete-card');
         card.classList.add(`status-${pkg.estado}`);
 
-        let idText = pkg.id;
-        if (orderNum) idText = `#${orderNum} - ${idText}`;
-        tpl.querySelector('.paquete-id').textContent = idText;
-        
+        tpl.querySelector('.paquete-fisico').textContent = pkg.codigoFisico;
         tpl.querySelector('.paquete-cliente').textContent = pkg.cliente;
-        tpl.querySelector('.paquete-dir').textContent = pkg.direccion;
+        
+        const fullDir = pkg.pisoPuerta ? `${pkg.direccion}, ${pkg.pisoPuerta}` : pkg.direccion;
+        tpl.querySelector('.paquete-dir').textContent = fullDir;
         tpl.querySelector('.paquete-tel').textContent = pkg.telefono;
 
-        if (showAsignado) {
-            const rep = window.appData.repartidores.find(r => r.id === pkg.asignadoId);
-            const asigNode = tpl.querySelector('.paquete-asignado');
-            asigNode.textContent = rep ? rep.nombre : 'Sin asignar';
-            asigNode.classList.remove('hidden');
-            asigNode.classList.add('badge-asignado');
-        }
+        const rutaObj = window.State.getRutas().find(r => r.id === pkg.rutaAsignada);
+        tpl.querySelector('.paquete-ruta-info span').textContent = rutaObj ? `${rutaObj.nombre} (R${rutaObj.numeroRuta})` : 'Sin Ruta';
 
-        const tagsContainer = tpl.querySelector('.paquete-etiquetas');
-        pkg.etiquetas.forEach(tag => {
-            const tagEl = document.createElement('span');
-            tagEl.className = `badge badge-${tag.toLowerCase()}`;
-            tagEl.textContent = tag;
-            tagsContainer.appendChild(tagEl);
-        });
-
-        // Status badge if not pending
-        if (pkg.estado !== 'pendiente') {
-            const stEl = document.createElement('span');
-            stEl.className = `badge`;
-            stEl.style.backgroundColor = pkg.estado === 'entregado' ? 'var(--color-success)' : 'var(--color-danger)';
-            stEl.style.color = 'white';
-            stEl.textContent = pkg.estado.toUpperCase();
-            tagsContainer.appendChild(stEl);
+        if (isEncargado && rutaObj && rutaObj.repartidorAsignado) {
+            const rep = window.appData.repartidores.find(r => r.id === rutaObj.repartidorAsignado);
+            if (rep) {
+                const asig = tpl.querySelector('.paquete-asignado');
+                asig.textContent = rep.nombre;
+                asig.classList.remove('hidden');
+            }
         }
 
         tpl.querySelector('.action-ver').addEventListener('click', () => {
-            window.Routes.navigate('detalle-paquete', { id: pkg.id });
+            window.Routes.navigate('detalle-paquete', { id: pkg.idPaquete });
         });
 
         return card;
@@ -182,84 +270,69 @@ const UI = {
 
     renderDetallePaquete(id) {
         this.navContainer.classList.add('hidden');
-        const pkg = window.State.getPaquetes().find(p => p.id === id);
-        if (!pkg) {
-            window.history.back();
-            return;
-        }
+        const pkg = window.State.getPaquetes().find(p => p.idPaquete === id);
+        if (!pkg) return window.history.back();
 
         const tpl = this.cloneTpl('tpl-detalle-paquete');
         this.setupBackBtn(tpl);
 
-        tpl.querySelector('.det-id').textContent = pkg.id;
+        tpl.querySelector('.det-id').textContent = pkg.idPaquete;
+        tpl.querySelector('.det-fisico').textContent = pkg.codigoFisico;
         tpl.querySelector('.det-cliente').textContent = pkg.cliente;
         tpl.querySelector('.det-tel').textContent = pkg.telefono;
-        tpl.querySelector('.det-dir').textContent = pkg.direccion;
+        
+        const fullDir = pkg.pisoPuerta ? `${pkg.direccion}, ${pkg.pisoPuerta}` : pkg.direccion;
+        tpl.querySelector('.det-dir').textContent = fullDir;
 
         const pagoEl = tpl.querySelector('.det-pago');
-        if (pkg.cobro) {
-            pagoEl.textContent = `A COBRAR: ${pkg.importe} €`;
+        if (pkg.esCobro) {
+            pagoEl.textContent = `A COBRAR: ${pkg.importeCobro} €`;
             pagoEl.classList.add('con-cobro');
         } else {
             pagoEl.textContent = 'PAQUETE SIN COBRO';
             pagoEl.classList.add('sin-cobro');
         }
 
-        const tagsContainer = tpl.querySelector('.det-etiquetas');
-        pkg.etiquetas.forEach(tag => {
-            const tagEl = document.createElement('span');
-            tagEl.className = `badge badge-${tag.toLowerCase()}`;
-            tagEl.textContent = tag;
-            tagsContainer.appendChild(tagEl);
-        });
-
         tpl.querySelector('.det-llamadas').textContent = `(${pkg.llamadas})`;
 
         // Actions
         tpl.querySelector('.action-llamar').addEventListener('click', () => {
-            pkg.llamadas++;
-            window.State.updatePaquete(pkg.id, { llamadas: pkg.llamadas });
+            window.State.updatePaquete(pkg.idPaquete, { llamadas: pkg.llamadas + 1 });
             window.location.href = `tel:${pkg.telefono}`;
-            // Re-render
-            window.Routes.renderCurrent();
         });
 
         tpl.querySelector('.action-whatsapp').addEventListener('click', () => {
-            const msg = encodeURIComponent(`Hola ${pkg.cliente}, soy el repartidor de RB Logistics. Estoy intentando entregar un paquete en ${pkg.direccion}.`);
+            const msg = encodeURIComponent(`Hola ${pkg.cliente}, soy el repartidor. Estoy intentando entregar un paquete en ${pkg.direccion}.`);
             window.open(`https://wa.me/34${pkg.telefono.replace(/\s+/g,'')}?text=${msg}`, '_blank');
         });
 
         tpl.querySelector('.action-maps').addEventListener('click', () => {
-            const query = encodeURIComponent(pkg.direccion);
+            const query = encodeURIComponent(fullDir);
             window.open(`https://maps.google.com/?q=${query}`, '_blank');
         });
 
         const notaInput = tpl.querySelector('#nota');
         notaInput.value = pkg.nota || '';
 
-        // Status actions
         const incPanel = tpl.querySelector('#incidencia-panel');
         const motivoSelect = tpl.querySelector('#motivo');
 
         tpl.querySelector('.action-entregado').addEventListener('click', () => {
-            window.State.updatePaquete(pkg.id, { estado: 'entregado', nota: notaInput.value });
+            window.State.updatePaquete(pkg.idPaquete, { estado: 'entregado', nota: notaInput.value });
             window.history.back();
         });
 
-        tpl.querySelector('.action-no-entregado').addEventListener('click', () => {
-            incPanel.classList.remove('hidden');
-        });
+        tpl.querySelector('.action-no-entregado').addEventListener('click', () => incPanel.classList.remove('hidden'));
 
         tpl.querySelector('.action-guardar-incidencia').addEventListener('click', () => {
-            if (!motivoSelect.value) { alert("Selecciona un motivo"); return; }
-            window.State.updatePaquete(pkg.id, { 
+            if (!motivoSelect.value) return alert("Selecciona un motivo");
+            window.State.updatePaquete(pkg.idPaquete, { 
                 estado: 'fallido', 
                 nota: `${motivoSelect.value} - ${notaInput.value}`
             });
             window.history.back();
         });
 
-        // Hide action card if already processed
         if (pkg.estado !== 'pendiente') {
             tpl.querySelector('#card-acciones').style.opacity = '0.5';
             tpl.querySelector('#card-acciones').style.pointerEvents = 'none';
@@ -272,22 +345,17 @@ const UI = {
     renderPlaceholder(title) {
         this.navContainer.classList.remove('hidden');
         this.updateNav(title.toLowerCase());
-        
         const tpl = this.cloneTpl('tpl-view-placeholder');
         this.setupBackBtn(tpl);
         tpl.querySelector('.view-title').textContent = title;
-        
         this.clearApp();
         this.appContainer.appendChild(tpl);
     },
 
     updateNav(activeTarget) {
         document.querySelectorAll('.nav-item').forEach(btn => {
-            if (btn.dataset.target === activeTarget) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+            if (btn.dataset.target === activeTarget) btn.classList.add('active');
+            else btn.classList.remove('active');
         });
     }
 };

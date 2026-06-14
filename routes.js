@@ -1,5 +1,4 @@
-// routes.js - Enrutador simple
-
+// routes.js
 const Routes = {
     navigate(route, params = null) {
         window.State.setRoute(route, params);
@@ -7,36 +6,33 @@ const Routes = {
     },
 
     renderCurrent() {
-        const routeData = window.State.getRoute();
-        const route = routeData.path;
-        const params = routeData.params;
+        const { path, params } = window.State.getRoute();
         const user = window.State.getCurrentUser();
 
-        if (!user || route === 'login') {
+        if (!user || path === 'login') {
             window.UI.renderLogin();
             return;
         }
 
-        // Header Navigation updates
-        if (route === 'inicio') {
+        if (path === 'inicio') {
             window.UI.navContainer.classList.remove('hidden');
             window.UI.updateNav('inicio');
-        } else {
-            // Some specific screens might hide bottom nav, but let's keep it simple
         }
 
-        switch (route) {
+        switch (path) {
             case 'inicio':
-                if (user.role === 'encargado') {
-                    window.UI.renderDashboardEncargado();
-                } else {
-                    // Repartidor sin ID seleccionado -> selector de repartidor
-                    if (!user.id) {
-                        window.UI.renderSelectorRepartidor();
-                    } else {
-                        window.UI.renderPanelRepartidor(user.id);
-                    }
-                }
+                if (user.role === 'encargado') window.UI.renderDashboardEncargado();
+                else if (!user.id) window.UI.renderSelectorRepartidor();
+                else window.UI.renderPanelRepartidor(user.id);
+                break;
+            case 'crear-ruta':
+                window.UI.renderCrearRuta();
+                break;
+            case 'crear-paquete':
+                window.UI.renderCrearPaquete(params?.rutaId);
+                break;
+            case 'escribir-codigo':
+                window.UI.renderEscribirCodigo(params?.paqueteId);
                 break;
             case 'detalle-paquete':
                 window.UI.renderDetallePaquete(params?.id);
