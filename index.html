@@ -4,32 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>RutaBoss</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00205B">
 </head>
 <body>
     <div class="watermark"></div>
-
     <div id="app"></div>
 
     <!-- Bottom Navigation -->
     <nav id="bottom-nav" class="hidden">
-        <button class="nav-item active" data-target="inicio">
-            <span class="icon">🏠</span>
-            <span>Inicio</span>
+        <button class="nav-item active" data-action="nav" data-target="inicio">
+            <span class="icon">🏠</span><span>Inicio</span>
         </button>
-        <button class="nav-item" data-target="mapa">
-            <span class="icon">🗺️</span>
-            <span>Mapa</span>
+        <button class="nav-item" data-action="nav" data-target="mapa">
+            <span class="icon">🗺️</span><span>Mapa</span>
         </button>
-        <button class="nav-item" data-target="paquetes">
-            <span class="icon">📦</span>
-            <span>Paquetes</span>
+        <button class="nav-item" data-action="nav" data-target="paquetes">
+            <span class="icon">📦</span><span>Paquetes</span>
         </button>
-        <button class="nav-item" data-target="mas">
-            <span class="icon">☰</span>
-            <span>Más</span>
+        <button class="nav-item" data-action="nav" data-target="mas">
+            <span class="icon">☰</span><span>Más</span>
         </button>
     </nav>
 
@@ -44,13 +41,13 @@
             </div>
             <div class="card">
                 <h2 style="margin-bottom: 1rem; font-size: 1.25rem;">Seleccionar Perfil</h2>
-                <button class="btn btn-primary btn-large role-btn" data-role="repartidor">Repartidor</button>
-                <button class="btn btn-secondary btn-large role-btn" data-role="encargado">Encargado</button>
+                <button class="btn btn-primary btn-large role-btn" data-action="select-role" data-role="repartidor">Repartidor</button>
+                <button class="btn btn-secondary btn-large role-btn" data-action="select-role" data-role="encargado">Encargado</button>
                 
                 <div id="encargado-login" class="hidden mt-4">
                     <label for="password">Contraseña de acceso</label>
                     <input type="password" id="password" class="input-large" placeholder="1234">
-                    <button class="btn btn-primary btn-large w-full" id="btn-login-encargado">Entrar</button>
+                    <button class="btn btn-primary btn-large w-full" data-action="login-encargado">Entrar</button>
                 </div>
             </div>
         </div>
@@ -63,23 +60,23 @@
                 <div class="header-left">
                     <h2>Panel Encargado</h2>
                 </div>
-                <button class="btn-icon btn-salir" title="Cerrar sesión">🚪</button>
+                <button class="btn-icon btn-salir" data-action="logout" title="Cerrar sesión">🚪</button>
             </header>
             
             <div class="dashboard-stats">
                 <div class="stat-card horaria">
                     <span class="stat-value" id="stat-horaria">0</span>
-                    <span class="stat-label">Horarias Totales</span>
+                    <span class="stat-label">Horarias</span>
                 </div>
                 <div class="stat-card tienda">
                     <span class="stat-value" id="stat-tienda">0</span>
-                    <span class="stat-label">Tiendas Totales</span>
+                    <span class="stat-label">Tiendas</span>
                 </div>
             </div>
 
             <div class="section-title flex-between" style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>Rutas / Sectores</h3>
-                <button class="btn btn-primary btn-sm action-crear-ruta">+ Crear Ruta</button>
+                <button class="btn btn-primary btn-sm action-crear-ruta" data-action="open-create-route">+ Crear Ruta</button>
             </div>
             
             <div id="rutas-list" style="display:flex; flex-direction:column; gap:1rem;"></div>
@@ -103,50 +100,104 @@
                 <div>🏪 <span class="ruta-tiendas">0</span> tiendas</div>
                 <div>⏱️ <span class="ruta-horarias">0</span> horarias</div>
                 <div>🏢 <span class="ruta-bloques">0</span> bloques</div>
-                <div>💶 <span class="ruta-cobros">0</span> cobros</div>
             </div>
-            <button class="btn btn-accent btn-large w-full action-cargar-paquete">+ Cargar Paquete</button>
+            <div style="display:flex; gap:0.5rem;">
+                <button class="btn btn-secondary action-ver-mapa" data-action="open-map-route" style="flex:1;">📍 Ver Mapa</button>
+                <button class="btn btn-accent action-cargar-paquete" data-action="load-package" style="flex:2;">+ Cargar Paquete</button>
+            </div>
         </div>
     </template>
 
-    <!-- Crear Ruta -->
+    <!-- Crear Ruta con Mapa -->
     <template id="tpl-crear-ruta">
-        <div class="view crear-ruta-view">
-            <header class="app-header">
+        <div class="view crear-ruta-view" style="display:flex; flex-direction:column; height: 100vh; position: absolute; top:0; left:0; width:100%; z-index:200; background:var(--color-bg);">
+            <header class="app-header" style="background:var(--color-surface); padding:1rem; margin:0; box-shadow:0 2px 4px rgba(0,0,0,0.1); z-index:10;">
                 <div class="header-left">
-                    <button class="btn-icon btn-volver">🔙</button>
-                    <h2>Crear Ruta</h2>
+                    <button class="btn-icon btn-volver" data-action="go-back">🔙</button>
+                    <h2>Crear Sector</h2>
                 </div>
             </header>
-            <div class="card">
-                <label>Número de Ruta</label>
-                <input type="number" id="form-ruta-num" class="input-large" placeholder="Ej: 5">
+            <div id="map-crear-ruta" style="flex:1; width:100%; z-index:1;"></div>
+            
+            <div class="panel-inferior" style="background:var(--color-surface); padding: 1.5rem 1rem; border-top: 1px solid var(--color-border); max-height: 50vh; overflow-y:auto; z-index:10; box-shadow:0 -4px 6px rgba(0,0,0,0.05);">
+                <p class="text-sm text-light mb-2">Toca el mapa para fijar el centro del sector.</p>
                 
-                <label>Nombre/Sector</label>
-                <input type="text" id="form-ruta-nombre" class="input-large" placeholder="Ej: Ruta 5 (Centro)">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+                    <label style="margin:0;">Radio del sector:</label>
+                    <span id="radio-val" style="font-weight:bold; color:var(--color-primary);">500m</span>
+                </div>
+                <input type="range" id="form-ruta-radio" min="100" max="3000" step="50" value="500" class="w-full mb-4">
+                
+                <label>Color del sector</label>
+                <div id="color-picker" style="display:flex; gap:0.75rem; margin-bottom:1.5rem; overflow-x:auto; padding-bottom:0.5rem;">
+                    <button class="color-btn active" data-action="select-color" data-color="#1E3A8A" style="background:#1E3A8A; width:35px; height:35px; border-radius:50%; border:3px solid var(--color-primary);"></button>
+                    <button class="color-btn" data-action="select-color" data-color="#10B981" style="background:#10B981; width:35px; height:35px; border-radius:50%; border:3px solid transparent;"></button>
+                    <button class="color-btn" data-action="select-color" data-color="#F59E0B" style="background:#F59E0B; width:35px; height:35px; border-radius:50%; border:3px solid transparent;"></button>
+                    <button class="color-btn" data-action="select-color" data-color="#EF4444" style="background:#EF4444; width:35px; height:35px; border-radius:50%; border:3px solid transparent;"></button>
+                    <button class="color-btn" data-action="select-color" data-color="#8B5CF6" style="background:#8B5CF6; width:35px; height:35px; border-radius:50%; border:3px solid transparent;"></button>
+                    <button class="color-btn" data-action="select-color" data-color="#38BDF8" style="background:#38BDF8; width:35px; height:35px; border-radius:50%; border:3px solid transparent;"></button>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 2fr; gap:0.5rem; margin-bottom:1rem;">
+                    <div>
+                        <label>Nº Ruta</label>
+                        <input type="number" id="form-ruta-num" class="input-large" placeholder="Ej: 5" style="margin-bottom:0;">
+                    </div>
+                    <div>
+                        <label>Nombre/Sector</label>
+                        <input type="text" id="form-ruta-nombre" class="input-large" placeholder="Ej: Centro" style="margin-bottom:0;">
+                    </div>
+                </div>
                 
                 <label>Repartidor Asignado (opcional)</label>
-                <select id="form-ruta-repartidor" class="input-large">
+                <select id="form-ruta-repartidor" class="input-large" style="margin-bottom:1.5rem;">
                     <option value="">Sin asignar</option>
                 </select>
                 
-                <button class="btn btn-primary btn-large w-full mt-4 action-guardar-ruta">Guardar Ruta</button>
+                <button class="btn btn-primary btn-large w-full action-guardar-ruta" data-action="save-route">Guardar Ruta</button>
             </div>
         </div>
     </template>
 
-    <!-- Crear Paquete -->
+    <!-- Ruta Creada -->
+    <template id="tpl-ruta-creada">
+        <div class="view text-center" style="padding-top: 3rem;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🗺️</div>
+            <h2 style="color:var(--color-primary);">Sector Guardado</h2>
+            <p class="text-light mb-4">El sector se ha creado correctamente.</p>
+            
+            <div class="card">
+                <button class="btn btn-accent btn-large w-full mb-2 action-cargar-paquete" data-action="load-package-current">+ Cargar paquete en esta ruta</button>
+                <button class="btn btn-secondary btn-large w-full mb-2 action-crear-otro" data-action="open-create-route">Crear otro sector</button>
+                <button class="btn btn-secondary w-full action-volver" data-action="go-home" style="background:transparent; border:1px solid var(--color-border);">Volver al panel</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Cargar Paquete con Cámara -->
     <template id="tpl-crear-paquete">
         <div class="view crear-paquete-view">
             <header class="app-header">
                 <div class="header-left">
-                    <button class="btn-icon btn-volver">🔙</button>
+                    <button class="btn-icon btn-volver" data-action="go-back">🔙</button>
                     <h2>Cargar Paquete</h2>
                 </div>
             </header>
-            <div class="card">
-                <h3 id="form-paq-ruta-nombre" class="mb-2" style="color:var(--color-primary-light);">En Ruta</h3>
-                
+            <h3 id="form-paq-ruta-nombre" class="mb-2 text-center" style="color:var(--color-primary-light);">En Ruta</h3>
+            
+            <div id="paso-foto" class="card mb-2" style="background:#F0FDF4; border-color:#86EFAC;">
+                <label class="btn btn-success btn-large w-full" style="display:flex; justify-content:center; align-items:center; gap:0.5rem; cursor:pointer; margin:0;">
+                    📷 Sacar foto etiqueta
+                    <input type="file" id="foto-input" accept="image/*" capture="environment" class="hidden">
+                </label>
+                <div id="preview-container" class="hidden text-center mt-2">
+                    <img id="foto-preview" style="max-width:100%; max-height:200px; border-radius:8px; display:block; margin:0 auto;">
+                    <p class="text-success mt-2" style="font-weight:bold;">✅ Etiqueta capturada</p>
+                    <button class="btn btn-primary w-full mt-2" data-action="continue-to-data">Continuar a datos</button>
+                </div>
+            </div>
+
+            <div id="paso-datos" class="card">
                 <label>Cliente</label>
                 <input type="text" id="form-paq-cliente" class="input-large" placeholder="Nombre completo">
                 
@@ -159,11 +210,11 @@
                 <label>Piso/Puerta</label>
                 <input type="text" id="form-paq-piso" class="input-large" placeholder="1A, Local...">
                 
-                <div style="display:flex; gap:1rem; flex-wrap:wrap; margin: 1rem 0;">
-                    <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="form-paq-horaria"> Es Horaria</label>
-                    <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="form-paq-tienda"> Es Tienda</label>
-                    <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="form-paq-bloque"> Es Bloque</label>
-                    <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="form-paq-cobro"> Tiene Cobro</label>
+                <div style="display:flex; gap:1rem; flex-wrap:wrap; margin: 1rem 0; background:var(--color-bg); padding:1rem; border-radius:8px;">
+                    <label style="display:flex; align-items:center; gap:0.5rem; margin:0;"><input type="checkbox" id="form-paq-horaria"> Horaria</label>
+                    <label style="display:flex; align-items:center; gap:0.5rem; margin:0;"><input type="checkbox" id="form-paq-tienda"> Tienda</label>
+                    <label style="display:flex; align-items:center; gap:0.5rem; margin:0;"><input type="checkbox" id="form-paq-bloque"> Bloque</label>
+                    <label style="display:flex; align-items:center; gap:0.5rem; margin:0;"><input type="checkbox" id="form-paq-cobro" id="form-paq-cobro"> Cobro</label>
                 </div>
                 
                 <div id="container-importe" class="hidden">
@@ -171,7 +222,7 @@
                     <input type="number" id="form-paq-importe" class="input-large" value="0">
                 </div>
                 
-                <button class="btn btn-success btn-large w-full mt-4 action-guardar-paquete">Generar Código</button>
+                <button class="btn btn-primary btn-large w-full mt-2 action-guardar-paquete" data-action="save-package">Generar Código</button>
             </div>
         </div>
     </template>
@@ -180,16 +231,12 @@
     <template id="tpl-escribir-codigo">
         <div class="view escribir-codigo-view text-center">
             <header class="app-header">
-                <div class="header-left">
-                    <h2>Escribir en Paquete</h2>
-                </div>
+                <div class="header-left"><h2>Escribir en Paquete</h2></div>
             </header>
             <div class="card" style="margin-top: 3rem; padding: 3rem 1rem;">
                 <p class="mb-2 text-light">Copia esto en grande en el paquete:</p>
-                <div id="display-codigo-fisico" style="font-size: 3.5rem; font-weight: 900; line-height: 1.1; margin-bottom: 2rem; color: var(--color-primary);">
-                    45/2 TIENDA
-                </div>
-                <button class="btn btn-primary btn-large w-full action-marcar-escrito">✅ Marcar código escrito</button>
+                <div id="display-codigo-fisico" style="font-size: 3.5rem; font-weight: 900; line-height: 1.1; margin-bottom: 2rem; color: var(--color-primary);"></div>
+                <button class="btn btn-primary btn-large w-full action-marcar-escrito" data-action="mark-codigo-escrito">✅ Marcar código escrito</button>
             </div>
         </div>
     </template>
@@ -198,16 +245,10 @@
     <template id="tpl-selector-repartidor">
         <div class="view selector-view">
             <header class="app-header">
-                <div class="header-left">
-                    <button class="btn-icon btn-volver">🔙</button>
-                    <h2>¿Quién eres?</h2>
-                </div>
-                <button class="btn-icon btn-salir" title="Salir">🚪</button>
+                <div class="header-left"><button class="btn-icon btn-volver" data-action="logout">🔙</button><h2>¿Quién eres?</h2></div>
+                <button class="btn-icon btn-salir" data-action="logout" title="Salir">🚪</button>
             </header>
-            <div class="card">
-                <p class="mb-2">Selecciona tu perfil para ver tu ruta:</p>
-                <div id="repartidores-lista-botones" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-            </div>
+            <div class="card"><div id="repartidores-lista-botones" style="display: flex; flex-direction: column; gap: 0.5rem;"></div></div>
         </div>
     </template>
 
@@ -215,116 +256,63 @@
     <template id="tpl-panel-repartidor">
         <div class="view repartidor-view">
             <header class="app-header">
-                <div class="header-left">
-                    <button class="btn-icon btn-volver">🔙</button>
-                    <h2 id="ruta-title">Mi Ruta</h2>
-                </div>
-                <button class="btn-icon btn-salir" title="Cerrar sesión">🚪</button>
+                <div class="header-left"><button class="btn-icon btn-volver" data-action="logout">🔙</button><h2 id="ruta-title">Mi Ruta</h2></div>
+                <button class="btn-icon btn-salir" data-action="logout" title="Cerrar sesión">🚪</button>
             </header>
-            
-            <div class="map-placeholder">
-                <span>📍 Mapa Simulado</span>
-            </div>
-
-            <div class="section-title">
-                <h3>Pendientes (<span id="count-pendientes">0</span>)</h3>
-            </div>
-            
+            <div class="section-title"><h3>Pendientes (<span id="count-pendientes">0</span>)</h3></div>
             <div id="mis-paquetes-list"></div>
         </div>
     </template>
-    
-    <!-- Componente Tarjeta Paquete (Lista) -->
+
+    <!-- Componente Tarjeta Paquete -->
     <template id="tpl-paquete-card">
         <div class="card paquete-card">
-            <div class="paquete-header" style="margin-bottom:0.75rem;">
-                <span class="paquete-fisico" style="font-size:1.4rem; font-weight:900; color:var(--color-primary);"></span>
-                <span class="paquete-asignado badge hidden"></span>
-            </div>
+            <div class="paquete-header" style="margin-bottom:0.75rem;"><span class="paquete-fisico" style="font-size:1.4rem; font-weight:900; color:var(--color-primary);"></span><span class="paquete-asignado badge hidden"></span></div>
             <div class="paquete-cliente" style="font-size: 1.1rem; font-weight:bold; margin-bottom:0.25rem;"></div>
-            <div class="paquete-body">
-                <p><strong>📞</strong> <span class="paquete-tel"></span></p>
-                <p><strong>📍</strong> <span class="paquete-dir"></span></p>
-                <p class="paquete-ruta-info" style="font-size:0.85rem; color:var(--color-text-light); margin-top:0.2rem;"><strong>Ruta:</strong> <span></span></p>
-            </div>
-            <div class="paquete-actions" style="margin-top:0.5rem;">
-                <button class="btn btn-secondary btn-sm action-ver" style="width:100%;">Ver Detalle ➔</button>
-            </div>
+            <div class="paquete-body"><p><strong>📞</strong> <span class="paquete-tel"></span></p><p><strong>📍</strong> <span class="paquete-dir"></span></p><p class="paquete-ruta-info" style="font-size:0.85rem; color:var(--color-text-light); margin-top:0.2rem;"><strong>Ruta:</strong> <span></span></p></div>
+            <div class="paquete-actions" style="margin-top:0.5rem;"><button class="btn btn-secondary btn-sm action-ver" data-action="open-package-detail" style="width:100%;">Ver Detalle ➔</button></div>
         </div>
     </template>
 
-    <!-- Detalle de Paquete -->
+    <!-- Detalle Paquete -->
     <template id="tpl-detalle-paquete">
         <div class="view detalle-view">
-            <header class="app-header">
-                <div class="header-left">
-                    <button class="btn-icon btn-volver">🔙</button>
-                    <h2>Detalle <span class="det-id" style="font-size:1rem; color:var(--color-text-light);"></span></h2>
-                </div>
-            </header>
-            
-            <div class="card text-center" style="background:var(--color-bg); border:none; padding:1rem;">
-                <div class="det-fisico" style="font-size: 2.5rem; font-weight: 900; color: var(--color-primary); line-height:1;"></div>
-            </div>
-
+            <header class="app-header"><div class="header-left"><button class="btn-icon btn-volver" data-action="go-back">🔙</button><h2>Detalle <span class="det-id" style="font-size:1rem; color:var(--color-text-light);"></span></h2></div></header>
+            <div class="card text-center" style="background:var(--color-bg); border:none; padding:1rem;"><div class="det-fisico" style="font-size: 2.5rem; font-weight: 900; color: var(--color-primary); line-height:1;"></div></div>
             <div class="card mt-2">
                 <div class="cliente-info"><strong>👤</strong> <span class="det-cliente"></span></div>
-                <div style="font-size: 1.1rem; color: var(--color-primary); margin-bottom: 0.5rem;">
-                    <strong>📞</strong> <span class="det-tel"></span>
-                </div>
-                
+                <div style="font-size: 1.1rem; color: var(--color-primary); margin-bottom: 0.5rem;"><strong>📞</strong> <span class="det-tel"></span></div>
                 <div class="big-address det-dir"></div>
-                
                 <div class="pago-info det-pago"></div>
-                
                 <div class="btn-group mt-2">
-                    <button class="btn btn-secondary action-llamar">📞 Llamar <span class="det-llamadas text-sm">(0)</span></button>
-                    <button class="btn btn-success action-whatsapp">💬 Mensaje</button>
+                    <button class="btn btn-secondary action-llamar" data-action="call-client">📞 Llamar <span class="det-llamadas text-sm">(0)</span></button>
+                    <button class="btn btn-success action-whatsapp" data-action="message-client">💬 Mensaje</button>
                 </div>
-                <button class="btn btn-secondary btn-large w-full mt-2 action-maps">📍 Abrir en Maps</button>
+                <button class="btn btn-secondary btn-large w-full mt-2 action-maps" data-action="open-maps">📍 Abrir en Maps</button>
             </div>
-
             <div class="card" id="card-acciones">
-                <label for="nota">Nota (opcional)</label>
-                <input type="text" id="nota" class="input-large" placeholder="Escribe algo aquí...">
-                
+                <label for="nota">Nota (opcional)</label><input type="text" id="nota" class="input-large" placeholder="Escribe algo aquí...">
                 <div class="action-grid">
-                    <button class="btn btn-success btn-large action-entregado">✓ Entregado</button>
-                    <button class="btn btn-danger btn-large action-no-entregado">✗ No Entregado</button>
+                    <button class="btn btn-success btn-large action-entregado" data-action="mark-delivered">✓ Entregado</button>
+                    <button class="btn btn-danger btn-large action-no-entregado" data-action="show-incidencia-panel">✗ No Entregado</button>
                 </div>
-
                 <div id="incidencia-panel" class="hidden mt-2">
                     <label>Motivo de incidencia:</label>
                     <select id="motivo" class="input-large">
-                        <option value="">Seleccionar...</option>
-                        <option value="No contesta">No contesta</option>
-                        <option value="Ausente">Ausente</option>
-                        <option value="Tienda cerrada">Tienda cerrada</option>
-                        <option value="Dirección incorrecta">Dirección incorrecta</option>
-                        <option value="Reintentar">Reintentar luego</option>
+                        <option value="">Seleccionar...</option><option value="No contesta">No contesta</option><option value="Ausente">Ausente</option><option value="Tienda cerrada">Tienda cerrada</option><option value="Dirección incorrecta">Dirección incorrecta</option><option value="Reintentar">Reintentar luego</option>
                     </select>
-                    <button class="btn btn-danger btn-large w-full action-guardar-incidencia">Confirmar Fallido</button>
+                    <button class="btn btn-danger btn-large w-full action-guardar-incidencia" data-action="confirm-failure">Confirmar Fallido</button>
                 </div>
             </div>
         </div>
     </template>
     
-    <!-- View Placeholder -->
     <template id="tpl-view-placeholder">
-        <div class="view placeholder-view">
-            <header class="app-header">
-                <div class="header-left">
-                    <button class="btn-icon btn-volver">🔙</button>
-                    <h2 class="view-title"></h2>
-                </div>
-            </header>
-            <div class="empty-state">
-                <div class="icon">🚧</div>
-                <p>Módulo en construcción</p>
-            </div>
-        </div>
+        <div class="view placeholder-view"><header class="app-header"><div class="header-left"><button class="btn-icon btn-volver" data-action="go-back">🔙</button><h2 class="view-title"></h2></div></header><div class="empty-state"><div class="icon">🚧</div><p>Módulo en construcción</p></div></div>
     </template>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="data.js"></script>
     <script src="state.js"></script>
     <script src="ui.js"></script>

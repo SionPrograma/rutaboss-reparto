@@ -1,60 +1,35 @@
-// ui.js - Funciones para renderizar la interfaz
+// ui.js - Renderizado (Lógica limpia sin event listeners de botones)
 
 const UI = {
     appContainer: document.getElementById('app'),
     navContainer: document.getElementById('bottom-nav'),
+    mapInstance: null,
+    currentCircle: null,
+    currentColor: '#1E3A8A',
 
     clearApp() { this.appContainer.innerHTML = ''; },
     cloneTpl(id) { return document.getElementById(id).content.cloneNode(true); },
-    setupBackBtn(el) {
-        const btn = el.querySelector('.btn-volver');
-        if (btn) btn.addEventListener('click', () => window.history.back());
-    },
-    setupExitBtn(el) {
-        const btn = el.querySelector('.btn-salir');
-        if (btn) btn.addEventListener('click', () => { window.State.logout(); });
-    },
 
-    // Login & Selectors
+    // Render Login
     renderLogin() {
         this.navContainer.classList.add('hidden');
         const tpl = this.cloneTpl('tpl-login');
-        
-        tpl.querySelectorAll('.role-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                if (e.target.dataset.role === 'encargado') {
-                    document.getElementById('encargado-login').classList.remove('hidden');
-                } else {
-                    window.State.login('repartidor');
-                }
-            });
-        });
-
-        const passInput = tpl.querySelector('#password');
-        tpl.querySelector('#btn-login-encargado').addEventListener('click', () => {
-            if (passInput.value === '1234') window.State.login('encargado');
-            else alert('Contraseña incorrecta');
-        });
-
         this.clearApp();
         this.appContainer.appendChild(tpl);
     },
 
+    // Render Selector Repartidor
     renderSelectorRepartidor() {
         this.navContainer.classList.add('hidden');
         const tpl = this.cloneTpl('tpl-selector-repartidor');
-        this.setupExitBtn(tpl);
-        const btnVolver = tpl.querySelector('.btn-volver');
-        if (btnVolver) btnVolver.addEventListener('click', () => window.State.logout());
-
+        
         const list = tpl.querySelector('#repartidores-lista-botones');
         window.appData.repartidores.forEach(rep => {
             const btn = document.createElement('button');
             btn.className = 'btn btn-secondary btn-large';
             btn.textContent = rep.nombre;
-            btn.addEventListener('click', () => {
-                window.State.login('repartidor', rep.id);
-            });
+            btn.setAttribute('data-action', 'select-driver');
+            btn.setAttribute('data-driver-id', rep.id);
             list.appendChild(btn);
         });
 
@@ -62,33 +37,32 @@ const UI = {
         this.appContainer.appendChild(tpl);
     },
 
-    // Encargado: Dashboard & Rutas
+    // Render Dashboard Encargado
     renderDashboardEncargado() {
         this.navContainer.classList.remove('hidden');
         const tpl = this.cloneTpl('tpl-dashboard-encargado');
-        this.setupExitBtn(tpl);
-
+        
         const paquetes = window.State.getPaquetes();
         const rutas = window.State.getRutas();
         
-        // Stats
         tpl.querySelector('#stat-horaria').textContent = paquetes.filter(p => p.esHoraria).length;
         tpl.querySelector('#stat-tienda').textContent = paquetes.filter(p => p.esTienda).length;
 
-        // Rutas List
         const rutasList = tpl.querySelector('#rutas-list');
         rutas.forEach(ruta => {
             const rTpl = this.cloneTpl('tpl-ruta-card');
             const card = rTpl.querySelector('.ruta-card');
             card.style.borderLeftColor = ruta.color || 'var(--color-primary)';
-            rTpl.querySelector('.ruta-nombre').textContent = `${ruta.nombre} (R${ruta.numeroRuta})`;
+            if(ruta.color && ruta.color.length === 7) {
+                 card.style.backgroundColor = ruta.color + '0A';
+            }
             
+            rTpl.querySelector('.ruta-nombre').textContent = `${ruta.nombre} (R${ruta.numeroRuta})`;
             const pqs = paquetes.filter(p => p.rutaAsignada === ruta.id);
             rTpl.querySelector('.ruta-totales').textContent = pqs.length;
             rTpl.querySelector('.ruta-tiendas').textContent = pqs.filter(p=>p.esTienda).length;
             rTpl.querySelector('.ruta-horarias').textContent = pqs.filter(p=>p.esHoraria).length;
             rTpl.querySelector('.ruta-bloques').textContent = pqs.filter(p=>p.esBloque).length;
-            rTpl.querySelector('.ruta-cobros').textContent = pqs.filter(p=>p.esCobro).length;
 
             if (ruta.repartidorAsignado) {
                 const rep = window.appData.repartidores.find(r => r.id === ruta.repartidorAsignado);
@@ -97,18 +71,12 @@ const UI = {
                 rTpl.querySelector('.ruta-repartidor').style.display = 'none';
             }
 
-            rTpl.querySelector('.action-cargar-paquete').addEventListener('click', () => {
-                window.Routes.navigate('crear-paquete', { rutaId: ruta.id });
-            });
+            // Set data properties for actions
+            rTpl.querySelector('.action-cargar-paquete').setAttribute('data-ruta-id', ruta.id);
 
             rutasList.appendChild(rTpl);
         });
 
-        tpl.querySelector('.action-crear-ruta').addEventListener('click', () => {
-            window.Routes.navigate('crear-ruta');
-        });
-
-        // Últimos Paquetes
         const paqList = tpl.querySelector('#paquetes-list');
         paquetes.slice(-5).reverse().forEach(pkg => {
             paqList.appendChild(this.createPaqueteCard(pkg, true));
@@ -118,72 +86,170 @@ const UI = {
         this.appContainer.appendChild(tpl);
     },
 
+    // Render Crear Ruta (Mapa)
     renderCrearRuta() {
         this.navContainer.classList.add('hidden');
         const tpl = this.cloneTpl('tpl-crear-ruta');
-        this.setupBackBtn(tpl);
-
+        
         const selectRep = tpl.querySelector('#form-ruta-repartidor');
-        window.appData.repartidores.forEach(r => {
-            selectRep.add(new Option(r.nombre, r.id));
+        window.appData.repartidores.forEach(r => { selectRep.add(new Option(r.nombre, r.id)); });
+
+        this.clearApp();
+        this.appContainer.appendChild(tpl);
+
+        // INIT LEAFLET MAP
+        const mapEl = document.getElementById('map-crear-ruta');
+        if(this.mapInstance) { this.mapInstance.remove(); }
+        
+        const map = L.map(mapEl, { zoomControl: false }).setView([36.741, -4.425], 14);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            maxZoom: 20
+        }).addTo(map);
+
+        this.mapInstance = map;
+        this.currentCircle = null;
+        this.currentColor = '#1E3A8A';
+
+        const slider = document.getElementById('form-ruta-radio');
+        const radioVal = document.getElementById('radio-val');
+
+        // Draw existing
+        window.State.getRutas().forEach(r => {
+            if(r.tipoGeometria === 'circle' && r.centro) {
+                L.circle([r.centro.lat, r.centro.lng], { color: r.color, fillColor: r.color, fillOpacity: 0.1, weight: 1 }).addTo(map);
+            }
         });
 
-        tpl.querySelector('.action-guardar-ruta').addEventListener('click', () => {
-            const num = tpl.querySelector('#form-ruta-num').value;
-            const nom = tpl.querySelector('#form-ruta-nombre').value;
-            const rep = selectRep.value;
-            
-            if (!num || !nom) return alert("Completa número y nombre");
-            
-            window.State.addRuta({
-                id: 'ruta-' + Date.now(),
-                numeroRuta: parseInt(num),
-                nombre: nom,
-                color: '#1E3A8A', // generic color
-                repartidorAsignado: rep || null
-            });
-            window.history.back();
+        // Event for map tap
+        map.on('click', (e) => {
+            const rad = parseInt(slider.value);
+            if(this.currentCircle) {
+                this.currentCircle.setLatLng(e.latlng);
+            } else {
+                this.currentCircle = L.circle(e.latlng, {
+                    color: this.currentColor, fillColor: this.currentColor, fillOpacity: 0.3, radius: rad, weight: 3
+                }).addTo(map);
+            }
         });
 
+        // Only this specific UI input listener needed
+        slider.addEventListener('input', (e) => {
+            const v = e.target.value;
+            radioVal.textContent = v + 'm';
+            if(this.currentCircle) this.currentCircle.setRadius(parseInt(v));
+        });
+    },
+
+    // Handle Color Picker (called from app.js)
+    handleColorSelect(btn) {
+        document.querySelectorAll('.color-btn').forEach(b => b.style.borderColor = 'transparent');
+        btn.style.borderColor = 'var(--color-text)';
+        this.currentColor = btn.dataset.color;
+        if(this.currentCircle) {
+            this.currentCircle.setStyle({ color: this.currentColor, fillColor: this.currentColor });
+        }
+    },
+
+    // Handle Save Route (called from app.js)
+    handleSaveRoute() {
+        const num = document.getElementById('form-ruta-num').value;
+        const nom = document.getElementById('form-ruta-nombre').value;
+        const rep = document.getElementById('form-ruta-repartidor').value;
+        
+        if (!num || !nom || !this.currentCircle) return alert("Completa número, nombre y dibuja el sector tocando el mapa");
+        
+        const latlng = this.currentCircle.getLatLng();
+        const rId = 'ruta-' + Date.now();
+        
+        window.State.addRuta({
+            id: rId,
+            numeroRuta: parseInt(num),
+            nombre: nom,
+            color: this.currentColor,
+            repartidorAsignado: rep || null,
+            tipoGeometria: 'circle',
+            centro: { lat: latlng.lat, lng: latlng.lng },
+            radio: this.currentCircle.getRadius(),
+            fechaCreacion: new Date().toISOString()
+        });
+        window.Routes.navigate('ruta-creada', { rutaId: rId });
+    },
+
+    // Render Ruta Creada
+    renderRutaCreada(rutaId) {
+        this.navContainer.classList.add('hidden');
+        const tpl = this.cloneTpl('tpl-ruta-creada');
+        // El id se agarra en app.js desde el State params
         this.clearApp();
         this.appContainer.appendChild(tpl);
     },
 
+    // Render Cargar Paquete
     renderCrearPaquete(rutaId) {
         this.navContainer.classList.add('hidden');
         const ruta = window.State.getRutas().find(r => r.id === rutaId);
         if (!ruta) return window.history.back();
 
         const tpl = this.cloneTpl('tpl-crear-paquete');
-        this.setupBackBtn(tpl);
-        tpl.querySelector('#form-paq-ruta-nombre').textContent = `En: ${ruta.nombre}`;
+        tpl.querySelector('#form-paq-ruta-nombre').textContent = `En sector: ${ruta.nombre} (R${ruta.numeroRuta})`;
 
+        // These specific UI changes stay here
         const chkCobro = tpl.querySelector('#form-paq-cobro');
         const contImporte = tpl.querySelector('#container-importe');
-        chkCobro.addEventListener('change', () => {
-            contImporte.classList.toggle('hidden', !chkCobro.checked);
-        });
-
-        tpl.querySelector('.action-guardar-paquete').addEventListener('click', () => {
-            const p = window.State.addPaquete({
-                rutaAsignada: ruta.id,
-                cliente: tpl.querySelector('#form-paq-cliente').value || 'Sin nombre',
-                telefono: tpl.querySelector('#form-paq-tel').value || '',
-                direccion: tpl.querySelector('#form-paq-dir').value || '',
-                pisoPuerta: tpl.querySelector('#form-paq-piso').value || '',
-                esHoraria: tpl.querySelector('#form-paq-horaria').checked,
-                esTienda: tpl.querySelector('#form-paq-tienda').checked,
-                esBloque: tpl.querySelector('#form-paq-bloque').checked,
-                esCobro: chkCobro.checked,
-                importeCobro: parseFloat(tpl.querySelector('#form-paq-importe').value) || 0,
-            });
-            window.Routes.navigate('escribir-codigo', { paqueteId: p.idPaquete });
-        });
-
+        
+        const fotoInput = tpl.querySelector('#foto-input');
+        const previewCont = tpl.querySelector('#preview-container');
+        const previewImg = tpl.querySelector('#foto-preview');
+        
         this.clearApp();
         this.appContainer.appendChild(tpl);
+
+        // Add listeners after appending to ensure they work smoothly
+        document.getElementById('form-paq-cobro').addEventListener('change', (e) => {
+            document.getElementById('container-importe').classList.toggle('hidden', !e.target.checked);
+        });
+
+        document.getElementById('foto-input').addEventListener('change', async (e) => {
+            if(e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    document.getElementById('foto-preview').src = evt.target.result;
+                    document.getElementById('preview-container').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+                
+                // OCR Mock
+                const data = await window.extractPackageDataFromLabel(file);
+                if(data.cliente) document.getElementById('form-paq-cliente').value = data.cliente;
+                if(data.direccion) document.getElementById('form-paq-dir').value = data.direccion;
+            }
+        });
     },
 
+    // Handle Save Paquete (called from app.js)
+    handleSavePackage() {
+        const rutaId = window.State.getRoute().params?.rutaId;
+        if(!rutaId) return;
+        
+        const p = window.State.addPaquete({
+            rutaAsignada: rutaId,
+            cliente: document.getElementById('form-paq-cliente').value || 'Sin nombre',
+            telefono: document.getElementById('form-paq-tel').value || '',
+            direccion: document.getElementById('form-paq-dir').value || '',
+            pisoPuerta: document.getElementById('form-paq-piso').value || '',
+            esHoraria: document.getElementById('form-paq-horaria').checked,
+            esTienda: document.getElementById('form-paq-tienda').checked,
+            esBloque: document.getElementById('form-paq-bloque').checked,
+            esCobro: document.getElementById('form-paq-cobro').checked,
+            importeCobro: parseFloat(document.getElementById('form-paq-importe').value) || 0,
+        });
+        window.Routes.navigate('escribir-codigo', { paqueteId: p.idPaquete });
+    },
+
+    // Render Escribir Código
     renderEscribirCodigo(paqueteId) {
         this.navContainer.classList.add('hidden');
         const pkg = window.State.getPaquetes().find(p => p.idPaquete === paqueteId);
@@ -192,28 +258,19 @@ const UI = {
         const tpl = this.cloneTpl('tpl-escribir-codigo');
         tpl.querySelector('#display-codigo-fisico').textContent = pkg.codigoFisico;
         
-        tpl.querySelector('.action-marcar-escrito').addEventListener('click', () => {
-            window.State.updatePaquete(paqueteId, { codigoEscrito: true });
-            window.Routes.navigate('inicio');
-        });
-
         this.clearApp();
         this.appContainer.appendChild(tpl);
     },
 
-    // Repartidor
+    // Render Panel Repartidor
     renderPanelRepartidor(repartidorId) {
         this.navContainer.classList.remove('hidden');
         const tpl = this.cloneTpl('tpl-panel-repartidor');
-        this.setupBackBtn(tpl);
-        this.setupExitBtn(tpl);
-
+        
         const rep = window.appData.repartidores.find(r => r.id === repartidorId);
         if (rep) tpl.querySelector('#ruta-title').textContent = `Ruta de ${rep.nombre}`;
 
         const rutasDelRepartidor = window.State.getRutas().filter(r => r.repartidorAsignado === repartidorId).map(r=>r.id);
-        
-        // Paquetes asignados directamente (legacy) o por estar en su ruta
         let paquetes = window.State.getPaquetes().filter(p => 
             p.asignadoId === repartidorId || rutasDelRepartidor.includes(p.rutaAsignada)
         );
@@ -237,6 +294,7 @@ const UI = {
         this.appContainer.appendChild(tpl);
     },
 
+    // Create Card Utility
     createPaqueteCard(pkg, isEncargado = false) {
         const tpl = this.cloneTpl('tpl-paquete-card');
         const card = tpl.querySelector('.paquete-card');
@@ -261,21 +319,19 @@ const UI = {
             }
         }
 
-        tpl.querySelector('.action-ver').addEventListener('click', () => {
-            window.Routes.navigate('detalle-paquete', { id: pkg.idPaquete });
-        });
+        tpl.querySelector('.action-ver').setAttribute('data-pkg-id', pkg.idPaquete);
 
         return card;
     },
 
+    // Render Detalle
     renderDetallePaquete(id) {
         this.navContainer.classList.add('hidden');
         const pkg = window.State.getPaquetes().find(p => p.idPaquete === id);
         if (!pkg) return window.history.back();
 
         const tpl = this.cloneTpl('tpl-detalle-paquete');
-        this.setupBackBtn(tpl);
-
+        
         tpl.querySelector('.det-id').textContent = pkg.idPaquete;
         tpl.querySelector('.det-fisico').textContent = pkg.codigoFisico;
         tpl.querySelector('.det-cliente').textContent = pkg.cliente;
@@ -295,43 +351,15 @@ const UI = {
 
         tpl.querySelector('.det-llamadas').textContent = `(${pkg.llamadas})`;
 
-        // Actions
-        tpl.querySelector('.action-llamar').addEventListener('click', () => {
-            window.State.updatePaquete(pkg.idPaquete, { llamadas: pkg.llamadas + 1 });
-            window.location.href = `tel:${pkg.telefono}`;
-        });
-
-        tpl.querySelector('.action-whatsapp').addEventListener('click', () => {
-            const msg = encodeURIComponent(`Hola ${pkg.cliente}, soy el repartidor. Estoy intentando entregar un paquete en ${pkg.direccion}.`);
-            window.open(`https://wa.me/34${pkg.telefono.replace(/\s+/g,'')}?text=${msg}`, '_blank');
-        });
-
-        tpl.querySelector('.action-maps').addEventListener('click', () => {
-            const query = encodeURIComponent(fullDir);
-            window.open(`https://maps.google.com/?q=${query}`, '_blank');
-        });
-
+        // Set attributes for delegation
+        tpl.querySelector('.action-llamar').setAttribute('data-pkg-id', pkg.idPaquete);
+        tpl.querySelector('.action-whatsapp').setAttribute('data-pkg-id', pkg.idPaquete);
+        tpl.querySelector('.action-maps').setAttribute('data-pkg-id', pkg.idPaquete);
+        tpl.querySelector('.action-entregado').setAttribute('data-pkg-id', pkg.idPaquete);
+        tpl.querySelector('.action-guardar-incidencia').setAttribute('data-pkg-id', pkg.idPaquete);
+        
         const notaInput = tpl.querySelector('#nota');
         notaInput.value = pkg.nota || '';
-
-        const incPanel = tpl.querySelector('#incidencia-panel');
-        const motivoSelect = tpl.querySelector('#motivo');
-
-        tpl.querySelector('.action-entregado').addEventListener('click', () => {
-            window.State.updatePaquete(pkg.idPaquete, { estado: 'entregado', nota: notaInput.value });
-            window.history.back();
-        });
-
-        tpl.querySelector('.action-no-entregado').addEventListener('click', () => incPanel.classList.remove('hidden'));
-
-        tpl.querySelector('.action-guardar-incidencia').addEventListener('click', () => {
-            if (!motivoSelect.value) return alert("Selecciona un motivo");
-            window.State.updatePaquete(pkg.idPaquete, { 
-                estado: 'fallido', 
-                nota: `${motivoSelect.value} - ${notaInput.value}`
-            });
-            window.history.back();
-        });
 
         if (pkg.estado !== 'pendiente') {
             tpl.querySelector('#card-acciones').style.opacity = '0.5';
@@ -342,11 +370,53 @@ const UI = {
         this.appContainer.appendChild(tpl);
     },
 
+    // Actions Handlers for Detalle Paquete (called from app.js)
+    handleCallClient(id) {
+        const pkg = window.State.getPaquetes().find(p => p.idPaquete === id);
+        if(!pkg) return;
+        window.State.updatePaquete(id, { llamadas: pkg.llamadas + 1 });
+        window.location.href = `tel:${pkg.telefono}`;
+        // Re-render
+        window.Routes.renderCurrent();
+    },
+
+    handleMessageClient(id) {
+        const pkg = window.State.getPaquetes().find(p => p.idPaquete === id);
+        if(!pkg) return;
+        const msg = encodeURIComponent(`Hola ${pkg.cliente}, soy el repartidor. Estoy intentando entregar un paquete en ${pkg.direccion}.`);
+        window.open(`https://wa.me/34${pkg.telefono.replace(/\s+/g,'')}?text=${msg}`, '_blank');
+    },
+
+    handleOpenMaps(id) {
+        const pkg = window.State.getPaquetes().find(p => p.idPaquete === id);
+        if(!pkg) return;
+        const fullDir = pkg.pisoPuerta ? `${pkg.direccion}, ${pkg.pisoPuerta}` : pkg.direccion;
+        const query = encodeURIComponent(fullDir);
+        window.open(`https://maps.google.com/?q=${query}`, '_blank');
+    },
+
+    handleMarkDelivered(id) {
+        const nota = document.getElementById('nota').value;
+        window.State.updatePaquete(id, { estado: 'entregado', nota: nota });
+        window.history.back();
+    },
+
+    handleConfirmFailure(id) {
+        const motivo = document.getElementById('motivo').value;
+        const nota = document.getElementById('nota').value;
+        if (!motivo) return alert("Selecciona un motivo");
+        window.State.updatePaquete(id, { 
+            estado: 'fallido', 
+            nota: `${motivo} - ${nota}`
+        });
+        window.history.back();
+    },
+
+    // Others
     renderPlaceholder(title) {
         this.navContainer.classList.remove('hidden');
         this.updateNav(title.toLowerCase());
         const tpl = this.cloneTpl('tpl-view-placeholder');
-        this.setupBackBtn(tpl);
         tpl.querySelector('.view-title').textContent = title;
         this.clearApp();
         this.appContainer.appendChild(tpl);

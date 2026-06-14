@@ -7,10 +7,22 @@ const demoRepartidores = [
 ];
 
 const demoRutas = [
-    { id: 'ruta-1', numeroRuta: 1, nombre: 'Ruta 1', color: '#1E3A8A', repartidorAsignado: 'r1' },
-    { id: 'ruta-2', numeroRuta: 2, nombre: 'Ruta 2', color: '#F59E0B', repartidorAsignado: 'r2' },
-    { id: 'ruta-3', numeroRuta: 3, nombre: 'Ruta 3', color: '#10B981', repartidorAsignado: 'r3' },
-    { id: 'ruta-4', numeroRuta: 4, nombre: 'Ruta 4', color: '#8B5CF6', repartidorAsignado: null }
+    { 
+        id: 'ruta-1', numeroRuta: 1, nombre: 'Ruta 1', color: '#1E3A8A', repartidorAsignado: 'r1',
+        tipoGeometria: 'circle', centro: { lat: 36.721, lng: -4.421 }, radio: 500, fechaCreacion: new Date().toISOString()
+    },
+    { 
+        id: 'ruta-2', numeroRuta: 2, nombre: 'Ruta 2', color: '#F59E0B', repartidorAsignado: 'r2',
+        tipoGeometria: 'circle', centro: { lat: 36.731, lng: -4.431 }, radio: 600, fechaCreacion: new Date().toISOString()
+    },
+    { 
+        id: 'ruta-3', numeroRuta: 3, nombre: 'Ruta 3', color: '#10B981', repartidorAsignado: 'r3',
+        tipoGeometria: 'circle', centro: { lat: 36.741, lng: -4.441 }, radio: 700, fechaCreacion: new Date().toISOString()
+    },
+    { 
+        id: 'ruta-4', numeroRuta: 4, nombre: 'Ruta 4', color: '#EF4444', repartidorAsignado: null,
+        tipoGeometria: 'circle', centro: { lat: 36.711, lng: -4.451 }, radio: 500, fechaCreacion: new Date().toISOString()
+    }
 ];
 
 const demoPaquetes = [
