@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RutaBoss</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00205B">
+</head>
+<body>
+    <div class="watermark"></div>
+
+    <div id="app"></div>
+
+    <!-- Bottom Navigation -->
+    <nav id="bottom-nav" class="hidden">
+        <button class="nav-item active" data-target="inicio">
+            <span class="icon">🏠</span>
+            <span>Inicio</span>
+        </button>
+        <button class="nav-item" data-target="mapa">
+            <span class="icon">🗺️</span>
+            <span>Mapa</span>
+        </button>
+        <button class="nav-item" data-target="paquetes">
+            <span class="icon">📦</span>
+            <span>Paquetes</span>
+        </button>
+        <button class="nav-item" data-target="mas">
+            <span class="icon">☰</span>
+            <span>Más</span>
+        </button>
+    </nav>
+
+    <!-- TEMPLATES -->
+    
+    <!-- Login -->
+    <template id="tpl-login">
+        <div class="view login-view">
+            <div class="text-center" style="margin: 3rem 0;">
+                <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--color-primary);">RB Logistics</h1>
+                <p style="color: var(--color-text-light);">Acceso a Operativa</p>
+            </div>
+            <div class="card">
+                <h2 style="margin-bottom: 1rem; font-size: 1.25rem;">Seleccionar Perfil</h2>
+                <button class="btn btn-primary btn-large role-btn" data-role="repartidor">Repartidor</button>
+                <button class="btn btn-secondary btn-large role-btn" data-role="encargado">Encargado</button>
+                
+                <div id="encargado-login" class="hidden mt-4">
+                    <label for="password">Contraseña de acceso</label>
+                    <input type="password" id="password" class="input-large" placeholder="1234">
+                    <button class="btn btn-primary btn-large w-full" id="btn-login-encargado">Entrar</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Selector Repartidor -->
+    <template id="tpl-selector-repartidor">
+        <div class="view selector-view">
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="btn-icon btn-volver">🔙</button>
+                    <h2>¿Quién eres?</h2>
+                </div>
+                <button class="btn-icon btn-salir" title="Salir">🚪</button>
+            </header>
+            <div class="card">
+                <p class="mb-2">Selecciona tu perfil para ver tu ruta:</p>
+                <div id="repartidores-lista-botones" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Dashboard Encargado -->
+    <template id="tpl-dashboard-encargado">
+        <div class="view dashboard-view">
+            <header class="app-header">
+                <div class="header-left">
+                    <h2>Panel Encargado</h2>
+                </div>
+                <button class="btn-icon btn-salir" title="Cerrar sesión">🚪</button>
+            </header>
+            
+            <div class="dashboard-stats">
+                <div class="stat-card horaria">
+                    <span class="stat-value" id="stat-horaria">0</span>
+                    <span class="stat-label">Horaria</span>
+                </div>
+                <div class="stat-card tienda">
+                    <span class="stat-value" id="stat-tienda">0</span>
+                    <span class="stat-label">Tiendas</span>
+                </div>
+                <div class="stat-card bloques">
+                    <span class="stat-value" id="stat-bloque">0</span>
+                    <span class="stat-label">Bloques</span>
+                </div>
+                <div class="stat-card cobro">
+                    <span class="stat-value" id="stat-cobro">0</span>
+                    <span class="stat-label">Cobros</span>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <h3>Repartidores Activos</h3>
+            </div>
+            <div id="repartidores-list" class="horizontal-list"></div>
+
+            <div class="section-title">
+                <h3>Resumen Paquetes</h3>
+            </div>
+            <div id="paquetes-list"></div>
+        </div>
+    </template>
+
+    <!-- Panel Repartidor (Mi Ruta) -->
+    <template id="tpl-panel-repartidor">
+        <div class="view repartidor-view">
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="btn-icon btn-volver">🔙</button>
+                    <h2 id="ruta-title">Mi Ruta</h2>
+                </div>
+                <button class="btn-icon btn-salir" title="Cerrar sesión">🚪</button>
+            </header>
+            
+            <div class="map-placeholder">
+                <span>📍 Mapa Simulado</span>
+            </div>
+
+            <div class="section-title" style="display: flex; justify-content: space-between;">
+                <h3>Pendientes (<span id="count-pendientes">0</span>)</h3>
+            </div>
+            
+            <div id="mis-paquetes-list"></div>
+        </div>
+    </template>
+    
+    <!-- Componente Tarjeta Paquete (Lista) -->
+    <template id="tpl-paquete-card">
+        <div class="card paquete-card">
+            <div class="paquete-header">
+                <span class="paquete-id"></span>
+                <span class="paquete-asignado badge hidden"></span>
+            </div>
+            <div class="paquete-cliente"></div>
+            <div class="paquete-body">
+                <p><strong>📞</strong> <span class="paquete-tel"></span></p>
+                <p><strong>📍</strong> <span class="paquete-dir"></span></p>
+                <div class="paquete-etiquetas"></div>
+            </div>
+            <div class="paquete-actions">
+                <button class="btn btn-primary btn-sm action-ver">Ver Detalle ➔</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Detalle de Paquete -->
+    <template id="tpl-detalle-paquete">
+        <div class="view detalle-view">
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="btn-icon btn-volver">🔙</button>
+                    <h2>Detalle <span class="det-id" style="font-size:1rem; color:var(--color-text-light);"></span></h2>
+                </div>
+            </header>
+            
+            <div class="card">
+                <div class="cliente-info"><strong>👤</strong> <span class="det-cliente"></span></div>
+                <div style="font-size: 1.1rem; color: var(--color-primary); margin-bottom: 0.5rem;">
+                    <strong>📞</strong> <span class="det-tel"></span>
+                </div>
+                
+                <div class="big-address det-dir"></div>
+                
+                <div class="det-etiquetas paquete-etiquetas mb-2"></div>
+                
+                <div class="pago-info det-pago"></div>
+                
+                <div class="btn-group mt-2">
+                    <button class="btn btn-secondary action-llamar">📞 Llamar <span class="det-llamadas text-sm">(0)</span></button>
+                    <button class="btn btn-success action-whatsapp">💬 Mensaje</button>
+                </div>
+                <button class="btn btn-secondary btn-large w-full mt-2 action-maps">📍 Abrir en Maps</button>
+            </div>
+
+            <div class="card" id="card-acciones">
+                <label for="nota">Nota (opcional)</label>
+                <input type="text" id="nota" class="input-large" placeholder="Escribe algo aquí...">
+                
+                <div class="action-grid">
+                    <button class="btn btn-success btn-large action-entregado">✓ Entregado</button>
+                    <button class="btn btn-danger btn-large action-no-entregado">✗ No Entregado</button>
+                </div>
+
+                <div id="incidencia-panel" class="hidden mt-2">
+                    <label>Motivo de incidencia:</label>
+                    <select id="motivo" class="input-large">
+                        <option value="">Seleccionar...</option>
+                        <option value="No contesta">No contesta</option>
+                        <option value="Ausente">Ausente</option>
+                        <option value="Tienda cerrada">Tienda cerrada</option>
+                        <option value="Dirección incorrecta">Dirección incorrecta</option>
+                        <option value="Reintentar">Reintentar luego</option>
+                    </select>
+                    <button class="btn btn-danger btn-large w-full action-guardar-incidencia">Confirmar Fallido</button>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <!-- View Placeholder -->
+    <template id="tpl-view-placeholder">
+        <div class="view placeholder-view">
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="btn-icon btn-volver">🔙</button>
+                    <h2 class="view-title"></h2>
+                </div>
+            </header>
+            <div class="empty-state">
+                <div class="icon">🚧</div>
+                <p>Módulo en construcción</p>
+            </div>
+        </div>
+    </template>
+
+    <script src="data.js"></script>
+    <script src="state.js"></script>
+    <script src="ui.js"></script>
+    <script src="routes.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
