@@ -3,8 +3,14 @@
 const UI = {
     appContainer: document.getElementById('app'),
     navContainer: document.getElementById('bottom-nav'),
-    mapInstance: null,
-    currentCircle: null,
+    isPaintModeActive: false,
+    isPainting: false,
+    freehandPoints: [],
+    roadBoundaries: [],
+    strokeBounds: null,
+    adjustedToRoads: false,
+    
+    currentPolygonLayer: null,
     currentColor: '#1E3A8A',
 
     clearApp() { this.appContainer.innerHTML = ''; },
@@ -64,6 +70,10 @@ const UI = {
             rTpl.querySelector('.ruta-horarias').textContent = pqs.filter(p=>p.esHoraria).length;
             rTpl.querySelector('.ruta-bloques').textContent = pqs.filter(p=>p.esBloque).length;
 
+            if (ruta.adjusted) {
+                rTpl.querySelector('.ruta-ajustada').classList.remove('hidden');
+            }
+
             if (ruta.repartidorAsignado) {
                 const rep = window.appData.repartidores.find(r => r.id === ruta.repartidorAsignado);
                 if (rep) rTpl.querySelector('.ruta-repartidor').textContent = rep.nombre;
@@ -109,37 +119,115 @@ const UI = {
         }).addTo(map);
 
         this.mapInstance = map;
-        this.currentCircle = null;
+        this.isPaintModeActive = false;
+        this.isPainting = false;
+        this.freehandPoints = [];
+        this.roadBoundaries = [];
+        this.strokeBounds = null;
+        this.adjustedToRoads = false;
+        this.currentPolygonLayer = null;
         this.currentColor = '#1E3A8A';
-
-        const slider = document.getElementById('form-ruta-radio');
-        const radioVal = document.getElementById('radio-val');
 
         // Draw existing
         window.State.getRutas().forEach(r => {
-            if(r.tipoGeometria === 'circle' && r.centro) {
+            if (r.tipoGeometria === 'circle' && r.centro) {
                 L.circle([r.centro.lat, r.centro.lng], { color: r.color, fillColor: r.color, fillOpacity: 0.1, weight: 1 }).addTo(map);
+            } else if (r.tipoGeometria === 'polygon') {
+                const pts = r.geometryAdjusted || r.puntos;
+                if (pts) L.polygon(pts, { color: r.color, fillColor: r.color, fillOpacity: 0.1, weight: 1 }).addTo(map);
+            } else if (r.tipoGeometria === 'freehand-road-bounds' && r.freehandPoints) {
+                // Representar los garabatos dibujados para visualizarlos
+                L.polygon(r.freehandPoints, { color: r.color, fillColor: r.color, fillOpacity: 0.1, weight: 1 }).addTo(map);
             }
         });
 
-        // Event for map tap
-        map.on('click', (e) => {
-            const rad = parseInt(slider.value);
-            if(this.currentCircle) {
-                this.currentCircle.setLatLng(e.latlng);
-            } else {
-                this.currentCircle = L.circle(e.latlng, {
-                    color: this.currentColor, fillColor: this.currentColor, fillOpacity: 0.3, radius: rad, weight: 3
-                }).addTo(map);
-            }
+        // Eventos de Paint Mode sobre Leaflet (mousedown, mousemove, mouseup simulan touch fluidamente)
+        map.on('mousedown', (e) => {
+            if (!this.isPaintModeActive) return;
+            this.isPainting = true;
+            this.freehandPoints.push(e.latlng);
+            this.updatePaintDrawer();
         });
+        
+        map.on('mousemove', (e) => {
+            if (!this.isPainting || !this.isPaintModeActive) return;
+            this.freehandPoints.push(e.latlng);
+            this.updatePaintDrawer();
+        });
+        
+        map.on('mouseup', () => {
+            if (!this.isPaintModeActive) return;
+            this.isPainting = false;
+        });
+    },
 
-        // Only this specific UI input listener needed
-        slider.addEventListener('input', (e) => {
-            const v = e.target.value;
-            radioVal.textContent = v + 'm';
-            if(this.currentCircle) this.currentCircle.setRadius(parseInt(v));
-        });
+    updatePaintDrawer() {
+        if (!this.mapInstance) return;
+        if (this.currentPolygonLayer) this.currentPolygonLayer.remove();
+        
+        if (this.freehandPoints.length > 1) {
+            this.currentPolygonLayer = L.polyline(this.freehandPoints, {
+                color: this.currentColor, weight: 4
+            }).addTo(this.mapInstance);
+        }
+    },
+
+    handleTogglePaintMode() {
+        this.isPaintModeActive = !this.isPaintModeActive;
+        const btnToggle = document.getElementById('btn-paint-toggle');
+        const btnFinish = document.getElementById('btn-paint-finish');
+        
+        if (this.isPaintModeActive) {
+            this.mapInstance.dragging.disable();
+            btnToggle.classList.replace('btn-secondary', 'btn-primary');
+            btnToggle.textContent = '✏️ Dibujando...';
+            if (btnFinish) btnFinish.classList.remove('hidden');
+        } else {
+            this.mapInstance.dragging.enable();
+            btnToggle.classList.replace('btn-primary', 'btn-secondary');
+            btnToggle.textContent = '✏️ Activar Dibujo';
+            if (btnFinish) btnFinish.classList.add('hidden');
+        }
+    },
+
+    handleFinishPaintMode() {
+        this.isPaintModeActive = false;
+        this.isPainting = false;
+        if (this.mapInstance) this.mapInstance.dragging.enable();
+        
+        const btnToggle = document.getElementById('btn-paint-toggle');
+        const btnFinish = document.getElementById('btn-paint-finish');
+        if (btnToggle) {
+            btnToggle.classList.replace('btn-primary', 'btn-secondary');
+            btnToggle.textContent = '✏️ Activar Dibujo';
+        }
+        if (btnFinish) btnFinish.classList.add('hidden');
+
+        if (this.freehandPoints.length > 5) {
+            document.getElementById('ajuste-panel').classList.remove('hidden');
+        }
+    },
+
+    handleClearPaint() {
+        this.freehandPoints = [];
+        this.roadBoundaries = [];
+        this.strokeBounds = null;
+        this.adjustedToRoads = false;
+        if (this.currentPolygonLayer) this.currentPolygonLayer.remove();
+        this.currentPolygonLayer = null;
+        const panel = document.getElementById('ajuste-panel');
+        const limits = document.getElementById('limites-detectados');
+        if (panel) panel.classList.add('hidden');
+        if (limits) limits.classList.add('hidden');
+    },
+
+    handleAdjustToRoads() {
+        if (this.freehandPoints.length < 3) return;
+        this.strokeBounds = window.getStrokeBounds(this.freehandPoints);
+        this.roadBoundaries = window.detectNearbyRoadsFromStroke(this.freehandPoints);
+        this.adjustedToRoads = true;
+        
+        document.getElementById('limites-detectados').classList.remove('hidden');
     },
 
     // Handle Color Picker (called from app.js)
@@ -147,8 +235,9 @@ const UI = {
         document.querySelectorAll('.color-btn').forEach(b => b.style.borderColor = 'transparent');
         btn.style.borderColor = 'var(--color-text)';
         this.currentColor = btn.dataset.color;
-        if(this.currentCircle) {
-            this.currentCircle.setStyle({ color: this.currentColor, fillColor: this.currentColor });
+        
+        if (this.mapInstance) {
+            this.updatePaintDrawer();
         }
     },
 
@@ -158,10 +247,13 @@ const UI = {
         const nom = document.getElementById('form-ruta-nombre').value;
         const rep = document.getElementById('form-ruta-repartidor').value;
         
-        if (!num || !nom || !this.currentCircle) return alert("Completa número, nombre y dibuja el sector tocando el mapa");
+        if (!num || !nom) return alert("Completa el número y nombre de la ruta.");
+        if (this.freehandPoints.length < 5) {
+            return alert("Dibuja un trazo en el mapa (activando el modo dibujo) para delimitar la ruta.");
+        }
         
-        const latlng = this.currentCircle.getLatLng();
         const rId = 'ruta-' + Date.now();
+        const pts = this.freehandPoints.map(p => ({ lat: p.lat, lng: p.lng }));
         
         window.State.addRuta({
             id: rId,
@@ -169,9 +261,11 @@ const UI = {
             nombre: nom,
             color: this.currentColor,
             repartidorAsignado: rep || null,
-            tipoGeometria: 'circle',
-            centro: { lat: latlng.lat, lng: latlng.lng },
-            radio: this.currentCircle.getRadius(),
+            tipoGeometria: 'freehand-road-bounds',
+            freehandPoints: pts,
+            roadBoundaries: this.roadBoundaries || [],
+            bounds: this.strokeBounds || window.getStrokeBounds(pts),
+            adjustedToRoads: this.adjustedToRoads,
             fechaCreacion: new Date().toISOString()
         });
         window.Routes.navigate('ruta-creada', { rutaId: rId });

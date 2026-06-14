@@ -1,10 +1,74 @@
 // routes.js
 
+window.normalizeSectorPolygon = function(points) {
+    if (!points || points.length < 3) return points;
+    const centerLat = points.reduce((acc, p) => acc + p.lat, 0) / points.length;
+    const centerLng = points.reduce((acc, p) => acc + p.lng, 0) / points.length;
+    
+    return [...points].sort((a, b) => {
+        const angleA = Math.atan2(a.lat - centerLat, a.lng - centerLng);
+        const angleB = Math.atan2(b.lat - centerLat, b.lng - centerLng);
+        return angleA - angleB;
+    });
+};
+
+window.smoothSectorPolygon = function(points) {
+    if (!points || points.length < 3) return points;
+    const smoothed = [];
+    const len = points.length;
+    for (let i = 0; i < len; i++) {
+        const prev = points[(i - 1 + len) % len];
+        const curr = points[i];
+        const next = points[(i + 1) % len];
+        smoothed.push({
+            lat: curr.lat * 0.6 + prev.lat * 0.2 + next.lat * 0.2,
+            lng: curr.lng * 0.6 + prev.lng * 0.2 + next.lng * 0.2
+        });
+    }
+    return smoothed;
+};
+
+window.getStrokeBounds = function(points) {
+    if (!points || points.length === 0) return null;
+    let minLat = points[0].lat, maxLat = points[0].lat;
+    let minLng = points[0].lng, maxLng = points[0].lng;
+    points.forEach(p => {
+        if (p.lat < minLat) minLat = p.lat;
+        if (p.lat > maxLat) maxLat = p.lat;
+        if (p.lng < minLng) minLng = p.lng;
+        if (p.lng > maxLng) maxLng = p.lng;
+    });
+    return { minLat, maxLat, minLng, maxLng };
+};
+
+window.fetchRoadsFromOpenStreetMap = function(bounds) {
+    // TODO: usar Overpass API
+    // buscar highways dentro del bounding box del trazo
+    // comparar distancia entre trazo y líneas de calles
+    // seleccionar calles más cercanas
+    // usar esas calles como límites del sector
+    return Promise.resolve([]);
+};
+
+window.detectNearbyRoadsFromStroke = function(freehandPoints) {
+    return [
+        { name: "Calle Norte Demo", type: "street", side: "north", points: [] },
+        { name: "Calle Sur Demo", type: "street", side: "south", points: [] },
+        { name: "Calle Este Demo", type: "street", side: "east", points: [] },
+        { name: "Calle Oeste Demo", type: "street", side: "west", points: [] }
+    ];
+};
+
+window.snapSectorToRoads = function(points) {
+    // TODO: Futuro: conectar con Overpass/OpenStreetMap
+    const normalized = window.normalizeSectorPolygon(points);
+    return window.smoothSectorPolygon(normalized);
+};
+
 // Future Geometry Assignment Prep
 window.isPointInsideRouteSector = function(point, route) {
     if (route.tipoGeometria === 'circle' && route.centro && route.radio) {
-        // Basic distance calculation using Haversine formula
-        const R = 6371e3; // Earth radius in metres
+        const R = 6371e3;
         const φ1 = route.centro.lat * Math.PI/180;
         const φ2 = point.lat * Math.PI/180;
         const Δφ = (point.lat - route.centro.lat) * Math.PI/180;
@@ -17,8 +81,38 @@ window.isPointInsideRouteSector = function(point, route) {
         const distance = R * c;
 
         return distance <= route.radio;
+    } else if (route.tipoGeometria === 'polygon') {
+        const polygonPoints = route.geometryAdjusted || route.puntos;
+        if (!polygonPoints || polygonPoints.length < 3) return false;
+        
+        // Point in Polygon algorithm (Ray-casting)
+        const x = point.lng, y = point.lat;
+        let inside = false;
+        for (let i = 0, j = polygonPoints.length - 1; i < polygonPoints.length; j = i++) {
+            const xi = polygonPoints[i].lng, yi = polygonPoints[i].lat;
+            const xj = polygonPoints[j].lng, yj = polygonPoints[j].lat;
+            
+            const intersect = ((yi > y) !== (yj > y))
+                && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    } else if (route.tipoGeometria === 'freehand-road-bounds' && route.freehandPoints) {
+        // Fallback: usar ray-casting sobre el trazo original mientras no tengamos geometría real de calles.
+        const polygonPoints = route.freehandPoints;
+        if (polygonPoints.length < 3) return false;
+        
+        const x = point.lng, y = point.lat;
+        let inside = false;
+        for (let i = 0, j = polygonPoints.length - 1; i < polygonPoints.length; j = i++) {
+            const xi = polygonPoints[i].lng, yi = polygonPoints[i].lat;
+            const xj = polygonPoints[j].lng, yj = polygonPoints[j].lat;
+            const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
     }
-    return false; // Polygon support to be implemented
+    return false;
 };
 
 // Mock OCR Function

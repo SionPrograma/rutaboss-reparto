@@ -98,7 +98,10 @@
         <div class="card ruta-card" style="border-left: 5px solid var(--color-primary);">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 0.5rem;">
                 <h3 class="ruta-nombre" style="margin:0; font-size: 1.3rem;">Ruta</h3>
-                <span class="badge badge-asignado ruta-repartidor"></span>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <span class="badge badge-success hidden ruta-ajustada">Ajustada</span>
+                    <span class="badge badge-asignado ruta-repartidor"></span>
+                </div>
             </div>
             <div class="ruta-stats" style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-bottom: 1rem; color: var(--color-text-light); font-size:0.9rem;">
                 <div>📦 <span class="ruta-totales">0</span> paquetes</div>
@@ -125,13 +128,27 @@
             <div id="map-crear-ruta" style="flex:1; width:100%; z-index:1;"></div>
             
             <div class="panel-inferior" style="background:var(--color-surface); padding: 1.5rem 1rem; border-top: 1px solid var(--color-border); max-height: 50vh; overflow-y:auto; z-index:10; box-shadow:0 -4px 6px rgba(0,0,0,0.05);">
-                <p class="text-sm text-light mb-2">Toca el mapa para fijar el centro del sector.</p>
-                
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
-                    <label style="margin:0;">Radio del sector:</label>
-                    <span id="radio-val" style="font-weight:bold; color:var(--color-primary);">500m</span>
+                <p class="text-sm text-light mb-2">Usa el botón para activar el dibujo libre (Paint) y trazar el límite aproximado de tu ruta.</p>
+
+                <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                    <button class="btn btn-secondary btn-sm" data-action="toggle-paint-mode" id="btn-paint-toggle" style="flex:1;">✏️ Activar Dibujo</button>
+                    <button class="btn btn-accent btn-sm hidden" data-action="finish-paint-mode" id="btn-paint-finish" style="flex:1;">✅ Terminar</button>
+                    <button class="btn btn-secondary btn-sm" data-action="clear-paint" style="flex:1;">🗑️ Limpiar</button>
                 </div>
-                <input type="range" id="form-ruta-radio" min="100" max="3000" step="50" value="500" class="w-full mb-4">
+
+                <div id="ajuste-panel" class="hidden text-center mb-3 p-2" style="background:#F3F4F6; border-radius:8px; border:1px solid #E5E7EB;">
+                    <button class="btn btn-accent btn-sm w-full mb-2" data-action="adjust-to-roads">Ajustar a calles</button>
+                    <div id="limites-detectados" class="hidden text-left text-sm mt-2">
+                        <strong style="color:var(--color-text);">Límites detectados:</strong>
+                        <ul style="margin:0.5rem 0; padding-left:1.5rem; color:var(--color-primary);">
+                            <li>Calle norte: pendiente</li>
+                            <li>Calle sur: pendiente</li>
+                            <li>Calle este: pendiente</li>
+                            <li>Calle oeste: pendiente</li>
+                        </ul>
+                        <p class="text-xs text-light mt-1 mb-0">Detección real de calles preparada para integración con OpenStreetMap.</p>
+                    </div>
+                </div>
                 
                 <label>Color del sector</label>
                 <div id="color-picker" style="display:flex; gap:0.75rem; margin-bottom:1.5rem; overflow-x:auto; padding-bottom:0.5rem;">

@@ -149,5 +149,20 @@ function handleGlobalClick(e) {
         case 'select-color':
             window.UI.handleColorSelect(btn);
             break;
+        case 'adjust-to-roads':
+            window.UI.handleAdjustToRoads();
+            break;
+        case 'adjust-to-roads':
+            window.UI.handleAdjustToRoads();
+            break;
+        case 'toggle-paint-mode':
+            window.UI.handleTogglePaintMode();
+            break;
+        case 'finish-paint-mode':
+            window.UI.handleFinishPaintMode();
+            break;
+        case 'clear-paint':
+            window.UI.handleClearPaint();
+            break;
     }
 }
