@@ -95,7 +95,6 @@
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                    <button class="btn btn-warning btn-large w-full" data-action="open-picking" style="height: 60px; font-size: 1.3rem;">📋 MODO CARGA / PICKING</button>
                     <button class="btn btn-primary btn-large w-full" data-action="open-crear-rapido" style="height: 60px; font-size: 1.3rem;">🚀 MODO CALLE</button>
                     <button class="btn btn-secondary btn-large w-full" data-action="nav" data-target="paquetes">📦 VER RUTA</button>
                     
@@ -343,58 +342,6 @@
                 <p style="color:#4D7C0F; font-weight:bold; margin-bottom:0.5rem;">✅ Paquete Guardado</p>
                 <div id="rapido-codigo-fisico" style="font-size:3.5rem; font-weight:900; color:var(--color-primary); line-height:1.1; margin-bottom:1rem;"></div>
                 <button class="btn btn-accent btn-large w-full mt-2 action-quick-copy-last" data-action="quick-copy-last">📋 Copiar Código</button>
-            </div>
-        </div>
-    </template>
-
-    <!-- Modo Picking / Carga -->
-    <template id="tpl-picking">
-        <div class="view picking-view">
-            <header class="app-header">
-                <div class="header-left">
-                    <button class="btn-icon btn-volver" data-action="go-home">🔙</button>
-                    <h2>Modo Carga (Picking)</h2>
-                </div>
-            </header>
-            <div class="card">
-                <label>Seleccionar Ruta para Cargar</label>
-                <select id="picking-ruta-select" class="input-large">
-                    <!-- Dinámico -->
-                </select>
-                <p class="text-sm" style="color:var(--color-text-light); text-align:right;">
-                    Paquetes cargados aquí: <strong id="picking-cargados-count" style="color:var(--color-success);">0</strong>
-                </p>
-                
-                <label class="mt-4">Tipo de Paquete</label>
-                <div class="pill-group" id="picking-tipo-group">
-                    <button class="pill-btn active" data-val="domicilio">Domicilio</button>
-                    <button class="pill-btn" data-val="tienda">Tienda</button>
-                    <button class="pill-btn" data-val="cobro">Cobro</button>
-                </div>
-                
-                <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--color-border);">
-                
-                <button class="btn btn-accent btn-large w-full mb-2" data-action="start-scanner-picking" style="height:60px; font-size:1.2rem; display:flex; align-items:center; justify-content:center; gap:0.5rem;">📷 Escanear y Cargar</button>
-                
-                <div id="picking-scanner-container" class="hidden" style="margin-bottom:1rem; border:2px solid var(--color-primary); border-radius:8px; overflow:hidden; background:#000;">
-                    <video id="picking-zxing-video" style="width:100%; height:auto; display:block;"></video>
-                    <button class="btn btn-danger w-full" data-action="stop-scanner-picking" style="border-radius:0;">Cerrar Cámara</button>
-                </div>
-                
-                <div id="picking-result-box" class="hidden text-center mb-2" style="background:#F0F9FF; border:1px solid #BAE6FD; padding:1rem; border-radius:8px;">
-                    <p style="color:var(--color-primary); font-weight:bold; margin-bottom:0.25rem;">Código leído:</p>
-                    <p id="picking-barcode-val" style="font-family:monospace; font-size:1.2rem; font-weight:bold;"></p>
-                    <input type="hidden" id="picking-hidden-barcode-val" value="">
-                </div>
-                
-                <p id="picking-error-msg" class="hidden text-danger text-center text-sm mb-2"></p>
-                
-                <button class="btn btn-success btn-large w-full mt-2" data-action="save-package-picking" style="height:60px; font-size:1.3rem;">✓ CARGAR MANUAL</button>
-            </div>
-            
-            <div id="ultimo-paquete-picking" class="card hidden text-center" style="background:#ECFCCB; border:2px solid #84CC16;">
-                <p style="color:#4D7C0F; font-weight:bold; margin-bottom:0.5rem;">📦 Cargado en Furgoneta</p>
-                <div id="picking-codigo-fisico" style="font-size:3.5rem; font-weight:900; color:var(--color-success); line-height:1.1; margin-bottom:1rem;"></div>
             </div>
         </div>
     </template>

@@ -31,36 +31,17 @@ const State = {
     },
     
     loadDefaults() {
-        this.data.paquetes = JSON.parse(JSON.stringify(window.appData.paquetes || []));
-        this.data.rutas = JSON.parse(JSON.stringify(window.appData.rutas || []));
-        this.data.globalScanCounter = window.appData.globalScanCounter || 0;
+        this.data.paquetes = JSON.parse(JSON.stringify(window.appData.paquetes));
+        this.data.rutas = JSON.parse(JSON.stringify(window.appData.rutas));
+        this.data.globalScanCounter = window.appData.globalScanCounter;
         this.migrateData();
         this.save();
     },
 
     migrateData() {
         let changed = false;
-        
-        // Migrar Rutas
-        if (this.data.rutas) {
-            this.data.rutas.forEach(r => {
-                if (!r.status) {
-                    r.status = 'not_active';
-                    r.startedPickingAt = null;
-                    r.startedDeliveringAt = null;
-                    r.closedAt = null;
-                    changed = true;
-                }
-            });
-        }
         if (this.data.paquetes) {
             this.data.paquetes.forEach(p => {
-                if (p.isLoaded === undefined) {
-                    p.isLoaded = false;
-                    p.loadedAt = null;
-                    changed = true;
-                }
-                
                 if (p.tipo) return; // Already migrated
                 
                 if (p.esHoraria) p.tipo = 'horaria';
@@ -91,20 +72,8 @@ const State = {
     getRutas() { return this.data.rutas || []; },
     
     addRuta(ruta) {
-        ruta.status = ruta.status || 'not_active';
-        ruta.startedPickingAt = ruta.startedPickingAt || null;
-        ruta.startedDeliveringAt = ruta.startedDeliveringAt || null;
-        ruta.closedAt = ruta.closedAt || null;
         this.data.rutas.push(ruta);
         this.save();
-    },
-
-    updateRuta(id, updates) {
-        const idx = this.data.rutas.findIndex(r => r.id === id);
-        if (idx !== -1) {
-            this.data.rutas[idx] = { ...this.data.rutas[idx], ...updates };
-            this.save();
-        }
     },
 
     addPaquete(paquete) {
@@ -133,9 +102,6 @@ const State = {
         paquete.barcode = paquete.barcode || null;
         paquete.scannerSource = paquete.scannerSource || 'manual';
         paquete.address = paquete.pisoPuerta ? `${paquete.direccion}, ${paquete.pisoPuerta}` : paquete.direccion;
-        
-        paquete.isLoaded = paquete.isLoaded || false;
-        paquete.loadedAt = paquete.loadedAt || null;
         
         this.data.paquetes.push(paquete);
         this.save();

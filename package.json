@@ -1,0 +1,19 @@
+{
+  "name": "rutaboss",
+  "version": "1.0.0",
+  "description": "App mobile-first para control de reparto",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve .",
+    "build:v1": "powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\build-v1.ps1",
+    "clean": "powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\clean-dev.ps1"
+  },
+  "keywords": [
+    "pwa",
+    "vanilla",
+    "logistics"
+  ],
+  "author": "",
+  "license": "ISC"
+}
