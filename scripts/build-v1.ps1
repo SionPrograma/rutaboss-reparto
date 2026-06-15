@@ -1,9 +1,9 @@
 # scripts/build-v1.ps1
 $rootDir = (Get-Item -Path ".\" -Verbose).FullName
 $distDir = Join-Path $rootDir "dist-rutaboss-v1"
-$zipPath = Join-Path $rootDir "rutaboss-v1.0.0-netlify.zip"
+$zipPath = Join-Path $rootDir "rutaboss-v1.0.1-netlify.zip"
 
-Write-Host "Iniciando Build Seguro para RutaBoss V1..."
+Write-Host "Iniciando Build Seguro para RutaBoss V1.0.1..."
 
 # 1. Limpiar o crear dist-rutaboss-v1
 if (Test-Path $distDir) {
@@ -28,6 +28,7 @@ $archivos = @(
     "ocr-reader.js",
     "VERSION.md",
     "RELEASE_NOTES_V1.md",
+    "RELEASE_NOTES_V1_0_1.md",
     "V1_MANUAL_USUARIO.md"
 )
 

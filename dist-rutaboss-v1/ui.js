@@ -67,18 +67,104 @@ const UI = {
         const rutas = window.State.getRutas();
         const rutasStatsList = tpl.querySelector('#rutas-stats-list');
         
+        const formatStatus = (s) => {
+            const m = {
+                'not_active': 'Sin Iniciar',
+                'waiting_for_picking': 'Esperando carga',
+                'picking': 'Cargando',
+                'delivering': 'En reparto',
+                'delivered': 'Cerrada'
+            };
+            return m[s] || s;
+        };
+
+        const getStatusColor = (s) => {
+            const m = {
+                'not_active': 'var(--color-text-light)',
+                'waiting_for_picking': 'var(--color-warning)',
+                'picking': 'var(--color-primary)',
+                'delivering': 'var(--color-accent)',
+                'delivered': 'var(--color-success)'
+            };
+            return m[s] || 'black';
+        };
+
         rutas.forEach(r => {
             const paqsRuta = paquetes.filter(p => p.rutaAsignada === r.id);
-            if(paqsRuta.length > 0) {
+            if(paqsRuta.length > 0 || r.status !== 'not_active') {
+                const cargados = paqsRuta.filter(p => p.isLoaded).length;
+                const pendientes = paqsRuta.filter(p => p.estado === 'pendiente').length;
+                const entregados = paqsRuta.filter(p => p.estado === 'entregado').length;
+                
                 const div = document.createElement('div');
-                div.style = "display: flex; justify-content: space-between; padding: 0.5rem; border-bottom: 1px solid var(--color-border); font-size:0.9rem;";
-                div.innerHTML = `<strong>R${r.numeroRuta} - ${r.nombre}</strong> <span>${paqsRuta.length} paquetes</span>`;
+                div.style = "padding: 1rem; border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 0.5rem; background: white;";
+                
+                let btns = '';
+                if(r.status === 'not_active' || r.status === 'waiting_for_picking') {
+                    btns = `<button class="btn btn-sm" style="background:var(--color-warning); color:#000;" data-action="route-set-picking" data-id="${r.id}">Iniciar carga</button>`;
+                } else if(r.status === 'picking') {
+                    btns = `<button class="btn btn-sm" style="background:var(--color-primary); color:white;" data-action="route-set-delivering" data-id="${r.id}">Marcar en reparto</button>`;
+                } else if(r.status === 'delivering') {
+                    btns = `<button class="btn btn-sm" style="background:var(--color-success); color:white;" data-action="route-set-delivered" data-id="${r.id}">Cerrar ruta</button>`;
+                }
+
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items:center; margin-bottom:0.5rem;">
+                        <strong style="font-size:1.1rem;">R${r.numeroRuta} - ${r.nombre}</strong> 
+                        <span class="badge" style="background:${getStatusColor(r.status)}; color:white;">${formatStatus(r.status)}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.25rem; font-size:0.8rem; text-align:center; margin-bottom:0.5rem;">
+                        <div style="background:#F3F4F6; padding:0.25rem; border-radius:4px;">📦 ${paqsRuta.length}</div>
+                        <div style="background:#ECFCCB; padding:0.25rem; border-radius:4px; color:#4D7C0F;">C: ${cargados}</div>
+                        <div style="background:#FEF3C7; padding:0.25rem; border-radius:4px; color:#B45309;">P: ${pendientes}</div>
+                        <div style="background:#D1FAE5; padding:0.25rem; border-radius:4px; color:#047857;">E: ${entregados}</div>
+                    </div>
+                    <div style="text-align:right;">${btns}</div>
+                `;
                 rutasStatsList.appendChild(div);
             }
         });
 
         this.clearApp();
         this.appContainer.appendChild(tpl);
+    },
+
+    // Render Picking
+    renderPicking() {
+        this.navContainer.classList.add('hidden');
+        const tpl = this.cloneTpl('tpl-picking');
+        
+        const rutas = window.State.getRutas();
+        const select = tpl.querySelector('#picking-ruta-select');
+        
+        // Populate rutas dropdown
+        if (rutas.length === 0) {
+            select.add(new Option('No hay rutas creadas', ''));
+        } else {
+            rutas.forEach(r => {
+                const opt = new Option(`Ruta ${r.numeroRuta} - ${r.nombre}`, r.id);
+                select.add(opt);
+            });
+            // Try to auto-select the route that is currently in "picking" status
+            const pickingRoute = rutas.find(r => r.status === 'picking');
+            if(pickingRoute) {
+                select.value = pickingRoute.id;
+            }
+        }
+        
+        this.clearApp();
+        this.appContainer.appendChild(tpl);
+        
+        // Initial count
+        this.updatePickingCount();
+    },
+
+    updatePickingCount() {
+        const select = document.getElementById('picking-ruta-select');
+        if(!select) return;
+        const countSpan = document.getElementById('picking-cargados-count');
+        const p = window.State.getPaquetes().filter(x => x.rutaAsignada === select.value && x.isLoaded);
+        if(countSpan) countSpan.textContent = p.length;
     },
 
     // Render Crear Ruta (Mapa)
@@ -923,6 +1009,58 @@ const UI = {
         }
         if (hideContainer) {
             const container = document.getElementById('scanner-container');
+            if (container) container.classList.add('hidden');
+        }
+    },
+
+    startScannerPicking() {
+        if (!window.ZXing) {
+            const errMsg = document.getElementById('picking-error-msg');
+            if (errMsg) {
+                errMsg.textContent = 'La librería ZXing no cargó. Usá carga manual.';
+                errMsg.classList.remove('hidden');
+            }
+            return;
+        }
+        
+        const container = document.getElementById('picking-scanner-container');
+        const errMsg = document.getElementById('picking-error-msg');
+        if (container) container.classList.remove('hidden');
+        if (errMsg) errMsg.classList.add('hidden');
+        
+        this.codeReaderPick = new ZXing.BrowserMultiFormatReader();
+        const videoElement = document.getElementById('picking-zxing-video');
+        
+        this.codeReaderPick.decodeFromVideoDevice(null, videoElement, (result, err) => {
+            if (result) {
+                const resBox = document.getElementById('picking-result-box');
+                const barVal = document.getElementById('picking-barcode-val');
+                const hidVal = document.getElementById('picking-hidden-barcode-val');
+                if(resBox) resBox.classList.remove('hidden');
+                if(barVal) barVal.textContent = result.text;
+                if(hidVal) hidVal.value = result.text;
+                
+                this.stopScannerPicking(false);
+                if(container) container.classList.add('hidden');
+            }
+            if (err && !(err instanceof ZXing.NotFoundException)) console.warn(err);
+        }).catch(err => {
+            console.error(err);
+            if (errMsg) {
+                errMsg.textContent = 'Error al abrir cámara.';
+                errMsg.classList.remove('hidden');
+            }
+            if (container) container.classList.add('hidden');
+        });
+    },
+
+    stopScannerPicking(hideContainer = true) {
+        if (this.codeReaderPick) {
+            this.codeReaderPick.reset();
+            this.codeReaderPick = null;
+        }
+        if (hideContainer) {
+            const container = document.getElementById('picking-scanner-container');
             if (container) container.classList.add('hidden');
         }
     },

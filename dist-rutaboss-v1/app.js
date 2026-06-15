@@ -80,7 +80,10 @@ function handleGlobalClick(e) {
                     address: p.address || p.direccion || '',
                     notes: p.notes || p.nota || '',
                     scannedAt: p.scannedAt || p.fechaEscaneo || '',
-                    deliveredAt: p.deliveredAt || ''
+                    deliveredAt: p.deliveredAt || '',
+                    isLoaded: p.isLoaded || false,
+                    loadedAt: p.loadedAt || '',
+                    routeStatus: window.State.getRutas().find(r => r.id === p.rutaAsignada)?.status || ''
                 }));
                 const ws = window.XLSX.utils.json_to_sheet(csvData);
                 const wb = window.XLSX.utils.book_new();
@@ -139,6 +142,54 @@ function handleGlobalClick(e) {
         case 'open-crear-paquete-completo':
             const activeRuta = document.querySelector('#rapido-ruta-group .active');
             window.Routes.navigate('crear-paquete', { rutaId: activeRuta ? activeRuta.dataset.val : null });
+            break;
+        case 'open-picking':
+            window.Routes.navigate('picking');
+            break;
+        case 'route-set-picking':
+            window.State.updateRuta(btn.dataset.id, { status: 'picking', startedPickingAt: new Date().toISOString() });
+            window.Routes.renderCurrent();
+            break;
+        case 'route-set-delivering':
+            window.State.updateRuta(btn.dataset.id, { status: 'delivering', startedDeliveringAt: new Date().toISOString() });
+            window.Routes.renderCurrent();
+            break;
+        case 'route-set-delivered':
+            window.State.updateRuta(btn.dataset.id, { status: 'delivered', closedAt: new Date().toISOString() });
+            window.Routes.renderCurrent();
+            break;
+        case 'start-scanner-picking':
+            window.UI.startScannerPicking();
+            break;
+        case 'stop-scanner-picking':
+            window.UI.stopScannerPicking();
+            break;
+        case 'save-package-picking':
+            const selRutaId = document.getElementById('picking-ruta-select')?.value;
+            if (!selRutaId) return alert('Debes tener al menos una ruta creada y seleccionada.');
+            
+            const selTipo = document.querySelector('#picking-tipo-group .active')?.dataset.val || 'domicilio';
+            const hiddenBarcodePick = document.getElementById('picking-hidden-barcode-val');
+            const barcodeValPick = hiddenBarcodePick && hiddenBarcodePick.value ? hiddenBarcodePick.value : null;
+            
+            const pkgPick = window.State.addPaquete({
+                rutaAsignada: selRutaId,
+                cliente: '', telefono: '', direccion: '', pisoPuerta: '',
+                tipo: selTipo,
+                importeCobro: 0,
+                barcode: barcodeValPick,
+                scannerSource: barcodeValPick ? 'zxing' : 'manual',
+                isLoaded: true,
+                loadedAt: new Date().toISOString()
+            });
+            
+            document.getElementById('ultimo-paquete-picking').classList.remove('hidden');
+            document.getElementById('picking-codigo-fisico').textContent = pkgPick.codigoFisico;
+            window.UI.updatePickingCount();
+            
+            if (hiddenBarcodePick) hiddenBarcodePick.value = '';
+            const resBoxPick = document.getElementById('picking-result-box');
+            if (resBoxPick) resBoxPick.classList.add('hidden');
             break;
         case 'start-scanner':
             window.UI.startScanner();

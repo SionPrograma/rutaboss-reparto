@@ -168,6 +168,9 @@ const Routes = {
             case 'ruta-creada':
                 window.UI.renderRutaCreada(params?.rutaId);
                 break;
+            case 'picking':
+                window.UI.renderPicking();
+                break;
             case 'detalle-paquete':
                 window.UI.renderDetallePaquete(params?.id);
                 break;
